@@ -48,6 +48,23 @@
             color: #667eea;
         }
 
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+        }
+
+        .nav-link {
+            color: #333;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s ease;
+        }
+
+        .nav-link:hover {
+            color: #667eea;
+        }
+
         .hero {
             padding: 120px 0 80px;
             text-align: center;
@@ -210,6 +227,10 @@
             .logo {
                 font-size: 1.3rem;
             }
+
+            .nav-links {
+                gap: 1rem;
+            }
         }
     </style>
 </head>
@@ -217,6 +238,9 @@
     <header>
         <nav class="container">
             <div class="logo">📋 Traveling Check-List</div>
+            <div class="nav-links">
+                <a href="social.html" class="nav-link">Community</a>
+            </div>
         </nav>
     </header>
 
