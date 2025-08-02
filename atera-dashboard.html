@@ -1,0 +1,2489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Atera Device Status Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .logo {
+            position: absolute;
+            left: 0;
+            top: 2px;
+            transform: scale(0.4032);
+            transform-origin: left top;
+        }
+        
+        .status-summary {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 18px;
+        }
+        
+        .online { color: #4CAF50; }
+        .offline { color: #757575; }
+        
+        .device-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .device-grid.list-view {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-width: 792px;
+        }
+
+        .folder-view-list {
+            max-width: 792px;
+            margin: 0 auto;
+        }
+
+        .folder-view-grid {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .device-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            position: relative;
+        }
+        
+        .device-item.list-item {
+            display: grid;
+            grid-template-columns: auto 170px auto 1fr auto 80px 80px;
+            align-items: center;
+            text-align: left;
+            background-color: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 12px 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            transition: box-shadow 0.3s ease;
+            gap: 12px;
+            column-gap: 8px;
+        }
+        
+        .device-item.list-item:hover {
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+        
+        .device-circle {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            margin-bottom: 10px;
+            transition: all 0.3s ease;
+            border: 2px solid #ddd;
+            cursor: pointer;
+        }
+        
+        .list-item .device-circle {
+            width: 16px;
+            height: 16px;
+            margin-bottom: 0;
+            margin-right: 12px;
+            flex-shrink: 0;
+        }
+        
+        .device-circle.online {
+            background-color: #4CAF50;
+            border-color: #45a049;
+            box-shadow: 0 0 10px rgba(76, 175, 80, 0.3);
+        }
+        
+        .device-circle.offline {
+            background-color: #757575;
+            border-color: #616161;
+        }
+        
+        .device-name {
+            font-size: 12px;
+            font-weight: bold;
+            margin-bottom: 5px;
+            word-wrap: break-word;
+            max-width: 100px;
+        }
+        
+        .device-status {
+            font-size: 10px;
+            color: #666;
+        }
+        
+        .list-item .device-name {
+            font-size: 14px;
+            margin-bottom: 2px;
+            max-width: none;
+            min-width: 150px;
+        }
+        
+        .list-item .device-status {
+            font-size: 11px;
+            margin-bottom: 0;
+        }
+        
+        .device-main-info {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .device-details {
+            display: none;
+            font-size: 11px;
+            color: #666;
+            line-height: 1.4;
+            text-align: left;
+        }
+        
+        .list-item .device-details {
+            display: block;
+        }
+        
+        .device-detail-row {
+            margin-bottom: 2px;
+        }
+        
+        .device-detail-label {
+            font-weight: 500;
+            color: #555;
+            display: inline-block;
+            min-width: 80px;
+        }
+        
+        .loading {
+            position: absolute;
+            top: 0;
+            right: 0;
+            font-size: 14px;
+            color: #666;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: none;
+        }
+        
+        .error {
+            text-align: center;
+            color: #f44336;
+            margin: 20px 0;
+            padding: 10px;
+            background-color: #ffebee;
+            border-radius: 5px;
+            display: none;
+        }
+        
+        .last-updated {
+            text-align: center;
+            color: #666;
+            font-size: 12px;
+            margin-top: 30px;
+        }
+        
+        .device-tooltip {
+            position: fixed;
+            background-color: #333;
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            white-space: normal;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s, visibility 0.3s;
+            z-index: 1000;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            min-width: 350px;
+            max-width: 500px;
+            text-align: left;
+            pointer-events: none;
+        }
+        
+        .tooltip-row {
+            margin-bottom: 4px;
+        }
+        
+        .tooltip-label {
+            font-weight: bold;
+            color: #ccc;
+        }
+        
+        .filter-controls {
+            display: flex;
+            align-items: center;
+            background-color: #fff;
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            position: relative;
+        }
+        
+        .filter-buttons {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 0 auto;
+        }
+        
+        .view-toggle {
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            border: 2px solid #ddd;
+            border-radius: 15px;
+            overflow: hidden;
+            position: absolute;
+            right: 20px;
+        }
+        
+        
+        
+        .folder-filter-container {
+            position: relative;
+            display: inline-block;
+        }
+        
+        .folder-btn {
+            position: relative;
+        }
+        
+        .dropdown-arrow {
+            margin-left: 5px;
+            font-size: 10px;
+            transition: transform 0.3s ease;
+        }
+        
+        .folder-btn.open .dropdown-arrow {
+            transform: rotate(180deg);
+        }
+        
+        .folder-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background-color: white;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            min-width: 200px;
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+            margin-top: 5px;
+        }
+        
+        .folder-dropdown.show {
+            display: block;
+        }
+        
+        .folder-item {
+            padding: 8px 12px;
+            cursor: pointer;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 12px;
+            color: #666;
+            transition: background-color 0.2s ease;
+        }
+        
+        .folder-item:last-child {
+            border-bottom: none;
+        }
+        
+        .folder-item:hover {
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        
+        .folder-item.active {
+            background-color: #4CAF50;
+            color: white;
+        }
+        
+        .folder-loading {
+            padding: 12px;
+            text-align: center;
+            color: #999;
+            font-size: 11px;
+            font-style: italic;
+        }
+
+        .reset-btn {
+            background-color: #ff9f70 !important;
+            border-color: #ff8a50 !important;
+            color: black !important;
+        }
+
+        .reset-btn:hover {
+            background-color: #ff8a50 !important;
+            border-color: #ff7530 !important;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(255, 159, 112, 0.3);
+        }
+        
+        
+        .view-btn {
+            padding: 6px 10px;
+            background-color: #f9f9f9;
+            color: #666;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .view-btn:hover {
+            background-color: #f0f0f0;
+        }
+        
+        .view-btn.active {
+            background-color: #4CAF50;
+            color: white;
+        }
+        
+        .grid-icon {
+            transform: rotate(90deg);
+            font-size: 12px;
+            line-height: 1;
+        }
+        
+        .list-icon {
+            font-size: 12px;
+            line-height: 1;
+        }
+        
+        .filter-label {
+            font-weight: bold;
+            color: #333;
+            font-size: 14px;
+        }
+        
+        
+        .filter-btn {
+            padding: 8px 16px;
+            border: 2px solid #ddd;
+            background-color: #f9f9f9;
+            color: #666;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .filter-btn:hover {
+            border-color: #ccc;
+            background-color: #f0f0f0;
+        }
+        
+        .filter-btn.active {
+            background-color: #4CAF50;
+            border-color: #45a049;
+            color: white;
+            box-shadow: 0 2px 4px rgba(76, 175, 80, 0.3);
+        }
+        
+        .filter-btn.online.active {
+            background-color: #4CAF50;
+            border-color: #45a049;
+        }
+        
+        .filter-btn.offline.active {
+            background-color: #757575;
+            border-color: #616161;
+        }
+        
+        .manage-btn {
+            margin-top: 8px;
+            padding: 4px 12px;
+            background-color: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .manage-btn:hover {
+            background-color: #1976D2;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(33, 150, 243, 0.3);
+        }
+        
+        .manage-btn:active {
+            transform: translateY(0);
+        }
+        
+        .list-item .manage-btn {
+            margin-top: 0;
+            justify-self: center;
+            width: fit-content;
+            grid-column: 7;
+        }
+        
+        .delete-btn {
+            margin-top: 0;
+            padding: 4px 12px;
+            background-color: #f44336;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            justify-self: center;
+            width: fit-content;
+        }
+        
+        .delete-btn:hover {
+            background-color: #d32f2f;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(244, 67, 54, 0.3);
+        }
+        
+        .delete-btn:active {
+            transform: translateY(0);
+        }
+        
+        .warning-icon {
+            color: #ff9800;
+            font-size: 14px;
+            margin-left: 6px;
+            cursor: help;
+            display: inline-block;
+            vertical-align: middle;
+        }
+        
+        .warning-icon:hover {
+            color: #f57c00;
+        }
+        
+        .warning-text {
+            color: #ff9800;
+            font-weight: 500;
+            font-size: 11px;
+            margin-left: 4px;
+        }
+        
+        .warning-message {
+            color: #ff9800;
+            font-weight: 500;
+            font-size: 11px;
+            background-color: #fff3e0;
+            border: 1px solid #ffcc02;
+            border-radius: 6px;
+            padding: 4px 8px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            white-space: nowrap;
+            justify-self: start;
+            width: fit-content;
+        }
+        
+        .reload-btn {
+            padding: 8px 16px;
+            background-color: #ffdf70;
+            color: black;
+            border: none;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .reload-btn:hover {
+            background-color: #ffca50;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(255, 223, 112, 0.3);
+        }
+        
+        .reload-btn:active {
+            transform: translateY(0);
+        }
+        
+        .reload-btn:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .reload-btn #countdown {
+            text-transform: none;
+        }
+        
+        .countdown-display {
+            color: #666;
+            font-size: 12px;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+        }
+        
+        /* Folder View Styles */
+        .folder-section {
+            margin-bottom: 30px;
+        }
+        
+        .folder-header {
+            background-color: #e3f2fd;
+            border: 2px solid #2196f3;
+            border-radius: 10px;
+            padding: 10.2px 20px;
+            margin-bottom: 15px;
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            align-items: center;
+            gap: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .folder-icon {
+            font-size: 18px;
+        }
+        
+        .folder-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+            margin: 0;
+            text-align: center;
+        }
+        
+        .folder-count {
+            background-color: #6c757d;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        
+        .folder-devices {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 20px;
+            margin-left: 20px;
+        }
+        
+        .folder-devices.list-view {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-left: 0;
+        }
+        
+        .no-folder-section {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 2px solid #e9ecef;
+        }
+        
+        .no-folder-header {
+            background-color: #fff3cd;
+            border: 2px solid #ffeaa7;
+            border-radius: 10px;
+            padding: 12px 20px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .no-folder-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #856404;
+            margin: 0;
+        }
+        
+        .no-folder-count {
+            background-color: #ffc107;
+            color: #212529;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+
+        /* API Key Modal Specific Styles */
+        .api-modal {
+            background-color: rgba(0, 0, 0, 0.8);
+        }
+
+        .api-modal-content {
+            max-width: 500px;
+            width: 90%;
+        }
+
+        .api-modal-body {
+            padding: 20px 0;
+        }
+
+        .api-modal-description {
+            font-size: 14px;
+            color: #555;
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+
+        .api-input-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .api-modal-input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.3s ease;
+        }
+
+        .api-modal-input:focus {
+            border-color: #4CAF50;
+        }
+
+        .api-modal-btn {
+            padding: 12px 24px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .api-modal-btn:hover {
+            background-color: #45a049;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(76, 175, 80, 0.3);
+        }
+
+        .api-modal-btn:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .api-modal-error {
+            color: #f44336;
+            background-color: #ffebee;
+            border: 1px solid #ffcdd2;
+            border-radius: 6px;
+            padding: 10px;
+            margin-bottom: 15px;
+            font-size: 13px;
+        }
+
+        .api-modal-help {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+
+        .api-modal-help p {
+            margin: 0 0 10px 0;
+            font-size: 13px;
+            color: #555;
+        }
+
+        .api-modal-help ol {
+            margin: 0;
+            padding-left: 20px;
+            font-size: 12px;
+            color: #666;
+        }
+
+        .api-modal-help li {
+            margin-bottom: 5px;
+        }
+        
+        .modal-content {
+            background-color: white;
+            border-radius: 12px;
+            padding: 20px;
+            max-width: 800px;
+            width: 95%;
+            max-height: 95vh;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #f0f0f0;
+            flex-shrink: 0;
+        }
+        
+        .modal-title {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+            margin: 0;
+        }
+        
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #666;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+        
+        .modal-close:hover {
+            background-color: #f0f0f0;
+            color: #333;
+        }
+        
+        .modal-body {
+            font-size: 13px;
+            line-height: 1.4;
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            overflow-y: auto;
+        }
+        
+        .modal-column {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .modal-row {
+            display: flex;
+            flex-direction: column;
+            padding: 6px 0;
+            border-bottom: 1px solid #f5f5f5;
+        }
+        
+        .modal-row:last-child {
+            border-bottom: none;
+        }
+        
+        .modal-label {
+            font-weight: bold;
+            color: #555;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 2px;
+        }
+        
+        .modal-value {
+            color: #333;
+            font-size: 13px;
+            word-break: break-word;
+        }
+        
+        .device-circle.clickable {
+            cursor: pointer;
+        }
+        
+        .device-circle.clickable:hover {
+            transform: scale(1.05);
+        }
+        
+        /* Responsive design for smaller screens */
+        @media (max-width: 768px) {
+            .modal-content {
+                width: 98%;
+                padding: 15px;
+                max-height: 98vh;
+            }
+            
+            .modal-body {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+            
+            .modal-title {
+                font-size: 20px;
+            }
+        }
+        
+    </style>
+</head>
+<body>
+    <div class="header">
+        <img src="images/logo.jpg" alt="YUPIX Logo" class="logo">
+        <h1>Atera Device Status Dashboard</h1>
+        <div id="loading" class="loading">Updating devices...</div>
+    </div>
+    
+    <div class="filter-controls">
+        <div class="filter-buttons">
+            <button class="filter-btn active" onclick="setFilter('all')" id="filterAll">All Devices</button>
+            <button class="filter-btn online" onclick="setFilter('online')" id="filterOnline">Online Only</button>
+            <button class="filter-btn offline" onclick="setFilter('offline')" id="filterOffline">Offline Only</button>
+            <button class="filter-btn" onclick="toggleFolderView()" id="folderViewBtn" title="Show Folders">
+                📁 Show Folders
+            </button>
+            <div class="folder-filter-container">
+                <button class="filter-btn folder-btn" onclick="toggleFolderDropdown()" id="folderFilterBtn">
+                    Folder <span class="dropdown-arrow">▼</span>
+                </button>
+                <div class="folder-dropdown" id="folderDropdown">
+                    <div class="folder-item" onclick="setFolderFilter('all')">All Folders</div>
+                    <div class="folder-loading">Loading folders...</div>
+                </div>
+            </div>
+            <button class="filter-btn reset-btn" onclick="resetView()" id="resetViewBtn" title="Reset all filters and view settings to default">
+                Reset View
+            </button>
+            <button class="reload-btn" onclick="reloadDevices()" id="reloadBtn" title="Reload device data">
+                <span>⟳</span> Reload (<span id="countdown">20s</span>)
+            </button>
+        </div>
+        <div class="view-toggle">
+            <button class="view-btn active" onclick="setViewMode('grid')" id="gridViewBtn" title="Grid View">
+                <span class="grid-icon">⋮⋮⋮</span>
+            </button>
+            <button class="view-btn" onclick="setViewMode('list')" id="listViewBtn" title="List View">
+                <span class="list-icon">☰</span>
+            </button>
+        </div>
+    </div>
+    
+    <div class="status-summary" id="statusSummary">
+        <span class="online">Online: 0</span> | 
+        <span class="offline">Offline: 0</span> | 
+        <span>Total: 0</span>
+    </div>
+    
+    <div id="error" class="error"></div>
+    
+    <div id="deviceGrid" class="device-grid"></div>
+    
+    <div id="lastUpdated" class="last-updated"></div>
+
+    <!-- Modal for device details -->
+    <div id="deviceModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle" class="modal-title">Device Details</h2>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div id="modalBody" class="modal-body">
+                <!-- Device details will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- API Key Setup Modal -->
+    <div id="apiKeyModal" class="modal-overlay api-modal">
+        <div class="modal-content api-modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">🔑 Atera API Key Required</h2>
+            </div>
+            <div class="api-modal-body">
+                <p class="api-modal-description">
+                    Please enter your Atera API key to access the device dashboard. 
+                    You can find your API key in your Atera account settings.
+                </p>
+                <div class="api-input-container">
+                    <input type="password" id="apiKeyModalInput" class="api-modal-input" placeholder="Enter your Atera API Key" />
+                    <button class="api-modal-btn" onclick="submitApiKey()" id="submitApiBtn">Connect</button>
+                </div>
+                <div class="api-modal-error" id="apiModalError" style="display: none;"></div>
+                <div class="api-modal-help">
+                    <p><strong>How to get your API key:</strong></p>
+                    <ol>
+                        <li>Log in to your Atera account</li>
+                        <li>Go to Administration → API</li>
+                        <li>Copy your API key</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ===== GLOBAL CONFIGURATION =====
+        const CONFIG = {
+            ONLINE_THRESHOLD_MS: 5 * 60 * 1000, // 5 minutes
+            POLL_INTERVAL_MS: 20000, // 20 seconds
+            COUNTDOWN_SECONDS: 20,
+            STORAGE_KEY: 'ateraApiKey'
+        };
+
+        // ===== GLOBAL STATE =====
+        let apiKey = localStorage.getItem(CONFIG.STORAGE_KEY) || '';
+        let devices = [];
+        let folders = [];
+        let pollInterval;
+        let countdownInterval;
+        let currentFilter = 'all'; // 'all', 'online', 'offline'
+        let currentFolderFilter = 'all'; // 'all' or folder name
+        let currentViewMode = 'grid'; // 'grid' or 'list'
+        let folderViewActive = false; // whether folder view is enabled
+        let secondsUntilReload = CONFIG.COUNTDOWN_SECONDS;
+        
+        // ===== UTILITY FUNCTIONS =====
+        let cachedElements;
+        
+        /**
+         * Make an API request to Atera with standard headers
+         * @param {string} endpoint - API endpoint (relative to base URL)
+         * @param {string} method - HTTP method
+         * @param {Object} options - Additional fetch options
+         * @returns {Promise<Response>} Fetch response
+         */
+        async function makeAteraApiRequest(endpoint, method = 'GET', options = {}) {
+            const url = `https://app.atera.com/api/v3/${endpoint}`;
+            const headers = {
+                'X-API-KEY': apiKey,
+                'Accept': 'application/json',
+                'Cache-Control': 'no-cache',
+                ...options.headers
+            };
+            
+            return fetch(url, {
+                method,
+                headers,
+                ...options
+            });
+        }
+        
+        /**
+         * Cache DOM elements for better performance
+         * @returns {Object} Cached DOM elements
+         */
+        function getCachedElements() {
+            if (!cachedElements) {
+                cachedElements = {
+                    deviceGrid: document.getElementById('deviceGrid'),
+                    statusSummary: document.getElementById('statusSummary'),
+                    lastUpdated: document.getElementById('lastUpdated'),
+                    loading: document.getElementById('loading'),
+                    error: document.getElementById('error'),
+                    modal: document.getElementById('deviceModal'),
+                    modalTitle: document.getElementById('modalTitle'),
+                    modalBody: document.getElementById('modalBody'),
+                    reloadBtn: document.getElementById('reloadBtn'),
+                    countdown: document.getElementById('countdown')
+                };
+            }
+            return cachedElements;
+        }
+
+        /**
+         * Get device name with fallback options
+         * @param {Object} device - Device object
+         * @returns {string} Device name
+         */
+        function getDeviceName(device) {
+            return device.MachineName || device.AgentName || 'Unknown Device';
+        }
+
+        /**
+         * Get device folder name with fallback options
+         * @param {Object} device - Device object
+         * @returns {string} Folder name or null
+         */
+        function getDeviceFolder(device) {
+            return device.FolderName || 
+                   device.AgentFolderName || 
+                   device.Folder || 
+                   device.FolderPath ||
+                   device.CustomerName ||
+                   device.Customer ||
+                   null;
+        }
+
+        /**
+         * Get device identifier for operations (delete, etc.)
+         * @param {Object} device - Device object
+         * @returns {string|number} Device identifier
+         */
+        function getDeviceId(device) {
+            return device.AgentID || device.AgentId || device.ID || device.DeviceGuid;
+        }
+
+        /**
+         * Escape string for safe HTML attribute usage
+         * @param {string} str - String to escape
+         * @returns {string} Escaped string
+         */
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str).replace(/'/g, '&#39;').replace(/"/g, '&quot;');
+        }
+
+        /**
+         * Format time difference in human readable format
+         * @param {Date} date - Date to compare
+         * @returns {string} Formatted time difference
+         */
+        function formatTimeDifference(date) {
+            const diffMs = Date.now() - date.getTime();
+            const diffMinutes = Math.floor(diffMs / (1000 * 60));
+            const diffHours = Math.floor(diffMinutes / 60);
+            const diffDays = Math.floor(diffHours / 24);
+            
+            if (diffDays > 0) {
+                return `Offline ${diffDays} day${diffDays > 1 ? 's' : ''}`;
+            } else if (diffHours > 0) {
+                return `Offline ${diffHours} hour${diffHours > 1 ? 's' : ''}`;
+            } else if (diffMinutes > 0) {
+                return `Offline ${diffMinutes} minute${diffMinutes > 1 ? 's' : ''}`;
+            } else {
+                return 'Just went offline';
+            }
+        }
+
+        /**
+         * Check if device has been offline for more than 30 days
+         * @param {Object} device - Device object
+         * @returns {boolean} True if device has been offline for more than 30 days
+         */
+        function isLongOffline(device) {
+            if (isDeviceOnline(device)) {
+                return false;
+            }
+            
+            if (device.LastSeen) {
+                const lastSeenDate = new Date(device.LastSeen);
+                const diffMs = Date.now() - lastSeenDate.getTime();
+                const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+                return diffDays > 30;
+            }
+            
+            return false;
+        }
+
+        /**
+         * Get days offline for a device
+         * @param {Object} device - Device object
+         * @returns {number} Number of days offline, or 0 if online
+         */
+        function getDaysOffline(device) {
+            if (isDeviceOnline(device)) {
+                return 0;
+            }
+            
+            if (device.LastSeen) {
+                const lastSeenDate = new Date(device.LastSeen);
+                const diffMs = Date.now() - lastSeenDate.getTime();
+                return Math.floor(diffMs / (1000 * 60 * 60 * 24));
+            }
+            
+            return 0;
+        }
+        
+        // ===== DEVICE STATUS UTILITIES =====
+        /**
+         * Determine if a device is online based on multiple possible fields
+         * @param {Object} device - Device object
+         * @returns {boolean} True if device is online
+         */
+        function isDeviceOnline(device) {
+            // Check various online status fields
+            const onlineFields = [
+                device.online,
+                device.isOnline,
+                device.Online,
+                device.IsOnline,
+                device.status === 'online',
+                device.Status === 'Online',
+                device.deviceStatus === 'online',
+                device.DeviceStatus === 'Online'
+            ];
+            
+            // Return true if any field indicates online status
+            if (onlineFields.some(field => field)) {
+                return true;
+            }
+            
+            // Check last seen time as fallback
+            return device.lastSeenTime > (Date.now() - CONFIG.ONLINE_THRESHOLD_MS);
+        }
+
+        /**
+         * Get device status text and calculate idle time
+         * @param {Object} device - Device object
+         * @returns {string} Status description
+         */
+        function getDeviceStatus(device) {
+            const isOnline = isDeviceOnline(device);
+            
+            if (isOnline) {
+                return 'Online';
+            }
+            
+            if (device.LastSeen) {
+                const lastSeenDate = new Date(device.LastSeen);
+                return formatTimeDifference(lastSeenDate);
+            }
+            
+            return 'Unknown';
+        }
+        
+        // ===== APPLICATION LIFECYCLE =====
+        // Load devices when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            // Ensure folder view is disabled by default
+            folderViewActive = false;
+            const folderViewBtn = document.getElementById('folderViewBtn');
+            folderViewBtn.classList.remove('active');
+            folderViewBtn.innerHTML = '📁 Show Folders';
+            
+            // Set initial folder view button visibility
+            updateFolderViewButtonVisibility();
+            
+            // Check if API key exists, if not show the API key modal
+            if (apiKey) {
+                loadDevices();
+                startPolling();
+            } else {
+                showApiKeyModal();
+            }
+        });
+        
+        async function loadDevices() {
+            if (!apiKey) {
+                showError('API key not configured');
+                return;
+            }
+            
+            showLoading('Updating devices...');
+            hideError();
+            
+            try {
+                const allDevices = await fetchAllDevices();
+                devices = allDevices;
+                loadFolders(); // Load folders after devices are loaded
+                renderDevices();
+                updateStatusSummary();
+                updateLastUpdated();
+            } catch (error) {
+                console.error('Error loading devices:', error);
+                showError(`Failed to load devices: ${error.message}`);
+            }
+        }
+        
+        async function fetchAllDevices() {
+            const allDevices = [];
+            let page = 1;
+            let totalPages = 1;
+            
+            do {
+                const response = await makeAteraApiRequest(`agents?page=${page}&itemsInPage=50`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.items) {
+                    allDevices.push(...data.items);
+                }
+                
+                totalPages = data.totalPages || 1;
+                page++;
+                
+            } while (page <= totalPages);
+            
+            return allDevices;
+        }
+        
+        /**
+         * Extract unique folders from device data and update dropdown
+         */
+        function loadFolders() {
+            const folderSet = new Set();
+            
+            devices.forEach(device => {
+                const folderName = getDeviceFolder(device);
+                if (folderName && folderName.trim() !== '') {
+                    folderSet.add(folderName.trim());
+                }
+            });
+            
+            // Convert to sorted array
+            folders = Array.from(folderSet).sort((a, b) => a.localeCompare(b));
+            updateFolderDropdown();
+        }
+        
+        /**
+         * Update the folder dropdown with current folder options
+         */
+        function updateFolderDropdown() {
+            const dropdown = document.getElementById('folderDropdown');
+            
+            // Clear existing items
+            dropdown.innerHTML = '<div class="folder-item active" onclick="setFolderFilter(\'all\')">All Folders</div>';
+            
+            // Add folder items
+            if (folders && folders.length > 0) {
+                folders.forEach(folderName => {
+                    const folderItem = document.createElement('div');
+                    folderItem.className = 'folder-item';
+                    folderItem.textContent = folderName;
+                    folderItem.onclick = () => setFolderFilter(folderName);
+                    dropdown.appendChild(folderItem);
+                });
+            } else {
+                const noFoldersItem = document.createElement('div');
+                noFoldersItem.className = 'folder-loading';
+                noFoldersItem.textContent = 'No folders found';
+                dropdown.appendChild(noFoldersItem);
+            }
+        }
+        
+        // ===== RENDERING FUNCTIONS =====
+        /**
+         * Render all devices in the current view mode and filter
+         */
+        function renderDevices() {
+            const { deviceGrid } = getCachedElements();
+            deviceGrid.innerHTML = '';
+            hideLoading();
+            
+            if (folderViewActive) {
+                renderFolderView();
+                return;
+            }
+            
+            const filteredDevices = getFilteredDevices();
+            
+            if (devices.length === 0) {
+                deviceGrid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: #666;">No devices found</div>';
+                return;
+            }
+            
+            if (filteredDevices.length === 0) {
+                const filterText = currentFilter === 'online' ? 'online' : 'offline';
+                deviceGrid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: #666;">No ${filterText} devices found</div>`;
+                return;
+            }
+            
+            filteredDevices.forEach(device => {
+                const deviceElement = createDeviceElement(device);
+                deviceGrid.appendChild(deviceElement);
+            });
+        }
+
+        /**
+         * Render devices organized by folders
+         */
+        function renderFolderView() {
+            const { deviceGrid } = getCachedElements();
+            const filteredDevices = getFilteredDevices();
+            
+            if (devices.length === 0) {
+                deviceGrid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: #666;">No devices found</div>';
+                return;
+            }
+            
+            if (filteredDevices.length === 0) {
+                const filterText = currentFilter === 'online' ? 'online' : 'offline';
+                deviceGrid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: #666;">No ${filterText} devices found</div>`;
+                return;
+            }
+            
+            // Group devices by folder
+            const devicesByFolder = groupDevicesByFolder(filteredDevices);
+            
+            // Remove grid layout for folder view but preserve list view class if needed
+            deviceGrid.classList.remove('device-grid');
+            if (currentViewMode === 'list') {
+                deviceGrid.classList.add('folder-view-list');
+            } else {
+                deviceGrid.classList.remove('list-view');
+                deviceGrid.classList.add('folder-view-grid');
+            }
+            
+            // Render folder sections
+            Object.keys(devicesByFolder).sort().forEach(folderName => {
+                if (folderName === '__no_folder__') return; // Handle this separately
+                
+                const folderDevices = devicesByFolder[folderName];
+                const folderSection = createFolderSection(folderName, folderDevices);
+                deviceGrid.appendChild(folderSection);
+            });
+            
+            // Render devices without folders at the bottom
+            if (devicesByFolder['__no_folder__'] && devicesByFolder['__no_folder__'].length > 0) {
+                const noFolderSection = createNoFolderSection(devicesByFolder['__no_folder__']);
+                deviceGrid.appendChild(noFolderSection);
+            }
+        }
+
+        /**
+         * Group devices by their folder names
+         * @param {Array} deviceList - List of devices to group
+         * @returns {Object} Devices grouped by folder name
+         */
+        function groupDevicesByFolder(deviceList) {
+            const grouped = {};
+            
+            deviceList.forEach(device => {
+                const folderName = getDeviceFolder(device);
+                const key = folderName && folderName.trim() ? folderName.trim() : '__no_folder__';
+                
+                if (!grouped[key]) {
+                    grouped[key] = [];
+                }
+                grouped[key].push(device);
+            });
+            
+            return grouped;
+        }
+
+        /**
+         * Create a folder section with header and devices
+         * @param {string} folderName - Name of the folder
+         * @param {Array} folderDevices - Devices in this folder
+         * @returns {HTMLElement} Folder section element
+         */
+        function createFolderSection(folderName, folderDevices) {
+            const section = document.createElement('div');
+            section.className = 'folder-section';
+            
+            // Create folder header
+            const header = document.createElement('div');
+            header.className = 'folder-header';
+            header.innerHTML = `
+                <span class="folder-icon">📁</span>
+                <h3 class="folder-title">${escapeHtml(folderName)}</h3>
+                <span class="folder-count">${folderDevices.length} device${folderDevices.length !== 1 ? 's' : ''}</span>
+            `;
+            
+            // Create devices container
+            const devicesContainer = document.createElement('div');
+            devicesContainer.className = currentViewMode === 'list' ? 'folder-devices list-view' : 'folder-devices';
+            
+            // Add devices to container
+            folderDevices.forEach(device => {
+                const deviceElement = createDeviceElement(device);
+                devicesContainer.appendChild(deviceElement);
+            });
+            
+            section.appendChild(header);
+            section.appendChild(devicesContainer);
+            
+            return section;
+        }
+
+        /**
+         * Create a section for devices not in any folder
+         * @param {Array} noFolderDevices - Devices without folders
+         * @returns {HTMLElement} No folder section element
+         */
+        function createNoFolderSection(noFolderDevices) {
+            const section = document.createElement('div');
+            section.className = 'folder-section no-folder-section';
+            
+            // Create header
+            const header = document.createElement('div');
+            header.className = 'no-folder-header';
+            header.innerHTML = `
+                <h3 class="no-folder-title">⚠️ Devices Not in Any Folder</h3>
+                <span class="no-folder-count">${noFolderDevices.length} device${noFolderDevices.length !== 1 ? 's' : ''}</span>
+            `;
+            
+            // Create devices container
+            const devicesContainer = document.createElement('div');
+            devicesContainer.className = currentViewMode === 'list' ? 'folder-devices list-view' : 'folder-devices';
+            
+            // Add devices to container
+            noFolderDevices.forEach(device => {
+                const deviceElement = createDeviceElement(device);
+                devicesContainer.appendChild(deviceElement);
+            });
+            
+            section.appendChild(header);
+            section.appendChild(devicesContainer);
+            
+            return section;
+        }
+        
+        /**
+         * Create a device element for grid or list view
+         * @param {Object} device - Device object
+         * @returns {HTMLElement} Device DOM element
+         */
+        function createDeviceElement(device) {
+            const deviceDiv = document.createElement('div');
+            const isOnline = isDeviceOnline(device);
+            const statusClass = isOnline ? 'online' : 'offline';
+            const statusText = isOnline ? 'Online' : 'Offline';
+            const deviceName = getDeviceName(device);
+            const manageUrl = device.AppViewUrl || `https://app.atera.com/Admin#/rmm/device/${device.DeviceGuid}/agent`;
+            
+            if (currentViewMode === 'list') {
+                // List view layout
+                deviceDiv.className = 'device-item list-item';
+                deviceDiv.innerHTML = `
+                    <div class="device-circle ${statusClass} clickable"></div>
+                    <div class="device-main-info">
+                        <div class="device-name">${escapeHtml(deviceName)}</div>
+                        <div class="device-status">${statusText}</div>
+                    </div>
+                    <div></div>
+                    <div class="device-details">
+                        ${createDeviceDetailsContent(device)}
+                    </div>
+                    ${isLongOffline(device) ? `<div class="warning-message">⚠️ Offline ${getDaysOffline(device)} days</div>` : '<div></div>'}
+                    ${!isOnline ? `<button class="delete-btn" onclick="confirmDeleteDevice('${getDeviceId(device)}', '${escapeHtml(deviceName)}')" title="Delete device">Delete</button>` : '<div></div>'}
+                    <a href="${manageUrl}" target="_blank" class="manage-btn" title="Open device in Atera console">Manage</a>
+                `;
+                
+                // Add modal click handler
+                addModalClickHandler(deviceDiv, device);
+                
+            } else {
+                // Grid view layout
+                deviceDiv.className = 'device-item';
+                deviceDiv.innerHTML = `
+                    <div class="device-tooltip">
+                        ${createTooltipContent(device)}
+                    </div>
+                    <div class="device-circle ${statusClass} clickable"></div>
+                    <div class="device-name">${escapeHtml(deviceName)}</div>
+                    <div class="device-status">${statusText}</div>
+                    <a href="${manageUrl}" target="_blank" class="manage-btn" title="Open device in Atera console">Manage</a>
+                `;
+                
+                // Add tooltip and modal handlers
+                addTooltipHandlers(deviceDiv);
+                addModalClickHandler(deviceDiv, device);
+            }
+            
+            return deviceDiv;
+        }
+
+        /**
+         * Add tooltip event handlers to a device element
+         * @param {HTMLElement} deviceDiv - Device element
+         */
+        function addTooltipHandlers(deviceDiv) {
+            const tooltip = deviceDiv.querySelector('.device-tooltip');
+            const circle = deviceDiv.querySelector('.device-circle');
+            
+            circle.addEventListener('mouseenter', e => {
+                tooltip.style.opacity = '1';
+                tooltip.style.visibility = 'visible';
+                positionTooltip(tooltip, e);
+            });
+            
+            circle.addEventListener('mousemove', e => positionTooltip(tooltip, e));
+            
+            circle.addEventListener('mouseleave', () => {
+                tooltip.style.opacity = '0';
+                tooltip.style.visibility = 'hidden';
+            });
+        }
+
+        /**
+         * Add modal click handler to a device element
+         * @param {HTMLElement} deviceDiv - Device element
+         * @param {Object} device - Device object
+         */
+        function addModalClickHandler(deviceDiv, device) {
+            const circle = deviceDiv.querySelector('.device-circle');
+            circle.addEventListener('click', e => {
+                e.stopPropagation();
+                showDeviceModal(device);
+            });
+        }
+        
+        /**
+         * Format a date with error handling
+         * @param {string|Date} dateValue - Date to format
+         * @param {boolean} includeTime - Whether to include time in format
+         * @returns {string} Formatted date or 'Unknown'
+         */
+        function formatDate(dateValue, includeTime = false) {
+            if (!dateValue || dateValue === 'Unknown') return 'Unknown';
+            
+            const date = new Date(dateValue);
+            if (isNaN(date.getTime())) return dateValue;
+            
+            return includeTime ? date.toLocaleString() : date.toLocaleDateString();
+        }
+
+        /**
+         * Get comprehensive device information for display
+         * @param {Object} device - Device object
+         * @param {boolean} extended - Whether to include extended info (BIOS, CPU, etc.)
+         * @returns {Object} Formatted device information
+         */
+        function getDeviceInfo(device, extended = false) {
+            const lastReboot = device.LastRebootTime || 'Unknown';
+            const loggedUser = device.CurrentLoggedUsers || device.LastLoginUser || 'No user logged in';
+            
+            // System information with fallbacks
+            let osVersion = 'Unknown';
+            if (device.OS) {
+                osVersion = device.OS;
+                if (device.OSVersion) osVersion += ` ${device.OSVersion}`;
+            } else if (device.OSNum) {
+                osVersion = `Windows ${device.OSNum}`;
+            }
+            
+            // Add build info if extended and available
+            if (extended && device.OSBuild) {
+                osVersion += ` (Build ${device.OSBuild})`;
+            }
+            
+            const ipAddress = device.IpAddresses?.[0] || 'Unknown';
+            const memory = device.Memory ? `${Math.round(device.Memory / 1024)} GB` : 'Unknown';
+            
+            // Clean up logged user display
+            const cleanLoggedUser = loggedUser?.includes('(Since:') 
+                ? loggedUser.split('(Since:')[0].trim() 
+                : loggedUser;
+            
+            const result = {
+                status: getDeviceStatus(device),
+                os: osVersion,
+                ip: ipAddress,
+                memory: memory,
+                lastReboot: formatDate(lastReboot, false),
+                lastRebootWithTime: formatDate(lastReboot, true),
+                user: cleanLoggedUser
+            };
+            
+            // Add extended information if requested
+            if (extended) {
+                // CPU Information
+                let cpuInfo = device.Processor || `${device.Vendor || 'Unknown'} ${device.VendorBrandModel || 'Computer'}`;
+                if (device.ProcessorClock && device.ProcessorClock !== 'Unknown') {
+                    cpuInfo += ` @ ${device.ProcessorClock}`;
+                }
+                
+                // BIOS Information
+                const biosInfo = device.BiosManufacturer && device.BiosVersion ? 
+                    `${device.BiosManufacturer} ${device.BiosVersion}` : 'Unknown';
+                const biosDate = formatDate(device.BiosReleaseDate);
+                
+                // Hardware Information
+                const vendorModel = device.VendorBrandModel || 'Unknown';
+                const vendorSerial = device.VendorSerialNumber || 'Unknown';
+                const motherboard = device.Motherboard || 'Unknown';
+                
+                result.extended = {
+                    cpu: cpuInfo,
+                    biosInfo: biosInfo,
+                    biosDate: biosDate,
+                    vendorModel: vendorModel,
+                    vendorSerial: vendorSerial,
+                    motherboard: motherboard
+                };
+            }
+            
+            return result;
+        }
+
+        /**
+         * Create device details content for list view
+         * @param {Object} device - Device object
+         * @returns {string} HTML content for device details
+         */
+        function createDeviceDetailsContent(device) {
+            const info = getDeviceInfo(device);
+            
+            const details = [
+                { label: 'IP', value: info.ip },
+                { label: 'Last Reboot', value: info.lastRebootWithTime },
+                { label: 'User', value: info.user }
+            ];
+            
+            return details
+                .map(detail => `<div class="device-detail-row"><span class="device-detail-label">${detail.label}:</span> ${detail.value}</div>`)
+                .join('');
+        }
+        
+        /**
+         * Create tooltip content for grid view device hover
+         * @param {Object} device - Device object
+         * @returns {string} HTML content for tooltip
+         */
+        function createTooltipContent(device) {
+            const deviceName = getDeviceName(device);
+            const info = getDeviceInfo(device, true); // Get extended info
+            
+            // Build tooltip content
+            const rows = [
+                `Device: ${deviceName}`,
+                `Last Reboot: ${info.lastRebootWithTime}`,
+                `Logged User: ${info.user}`,
+                `Status: ${info.status}`,
+                `OS: ${info.os}`,
+                `IP Address: ${info.ip}`,
+                `Memory: ${info.memory}`
+            ];
+            
+            // Add optional extended fields
+            const ext = info.extended;
+            if (ext.cpu && ext.cpu !== 'Unknown Computer' && ext.cpu !== 'Unknown Unknown') {
+                rows.push(`Processor: ${ext.cpu}`);
+            }
+            
+            if (ext.biosInfo !== 'Unknown') {
+                const biosDisplay = ext.biosDate !== 'Unknown' ? `${ext.biosInfo} (${ext.biosDate})` : ext.biosInfo;
+                rows.push(`BIOS: ${biosDisplay}`);
+            } else if (ext.biosDate !== 'Unknown') {
+                rows.push(`BIOS Date: ${ext.biosDate}`);
+            }
+            
+            if (ext.vendorModel !== 'Unknown') rows.push(`Model: ${ext.vendorModel}`);
+            if (ext.vendorSerial !== 'Unknown') rows.push(`Serial: ${ext.vendorSerial}`);
+            if (ext.motherboard !== 'Unknown') rows.push(`Motherboard: ${ext.motherboard}`);
+            
+            return rows
+                .map(row => `<div class="tooltip-row"><span class="tooltip-label">${row.split(': ')[0]}:</span> ${row.split(': ')[1]}</div>`)
+                .join('');
+        }
+        
+        // ===== MODAL FUNCTIONS =====
+        /**
+         * Show device details modal
+         * @param {Object} device - Device object to display
+         */
+        function showDeviceModal(device) {
+            const { modal, modalTitle, modalBody } = getCachedElements();
+            
+            modalTitle.textContent = getDeviceName(device);
+            modalBody.innerHTML = createModalContent(device);
+            modal.style.display = 'flex';
+            
+            // Add escape key listener
+            document.addEventListener('keydown', handleEscapeKey);
+        }
+        
+        /**
+         * Close the device details modal
+         */
+        function closeModal() {
+            const { modal } = getCachedElements();
+            modal.style.display = 'none';
+            document.removeEventListener('keydown', handleEscapeKey);
+        }
+        
+        /**
+         * Handle escape key press to close modal
+         * @param {KeyboardEvent} event - Keyboard event
+         */
+        function handleEscapeKey(event) {
+            if (event.key === 'Escape') {
+                closeModal();
+            }
+        }
+        
+        /**
+         * Create modal content for device details popup
+         * @param {Object} device - Device object
+         * @returns {string} HTML content for modal
+         */
+        function createModalContent(device) {
+            const deviceName = getDeviceName(device);
+            const info = getDeviceInfo(device, true); // Get extended info
+            
+            // Build status with warning if applicable
+            let statusValue = info.status;
+            if (isLongOffline(device)) {
+                const daysOffline = getDaysOffline(device);
+                statusValue += ` <span class="warning-text">⚠️ (offline for ${daysOffline} days)</span>`;
+            }
+            
+            // Build modal content rows
+            const rows = [
+                { label: 'Device Name', value: deviceName },
+                { label: 'Status', value: statusValue },
+                { label: 'Last Reboot', value: info.lastRebootWithTime },
+                { label: 'Logged User', value: info.user },
+                { label: 'Operating System', value: info.os },
+                { label: 'IP Address', value: info.ip },
+                { label: 'Memory', value: info.memory }
+            ];
+            
+            // Add optional extended fields
+            const ext = info.extended;
+            if (ext.cpu && ext.cpu !== 'Unknown Computer' && ext.cpu !== 'Unknown Unknown') {
+                rows.push({ label: 'Processor', value: ext.cpu });
+            }
+            
+            if (ext.biosInfo !== 'Unknown') {
+                const biosDisplay = ext.biosDate !== 'Unknown' ? `${ext.biosInfo} (${ext.biosDate})` : ext.biosInfo;
+                rows.push({ label: 'BIOS', value: biosDisplay });
+            } else if (ext.biosDate !== 'Unknown') {
+                rows.push({ label: 'BIOS Date', value: ext.biosDate });
+            }
+            
+            if (ext.vendorModel !== 'Unknown') rows.push({ label: 'Model', value: ext.vendorModel });
+            if (ext.vendorSerial !== 'Unknown') rows.push({ label: 'Serial Number', value: ext.vendorSerial });
+            if (ext.motherboard !== 'Unknown') rows.push({ label: 'Motherboard', value: ext.motherboard });
+            
+            // Split rows into two columns for better layout
+            const midpoint = Math.ceil(rows.length / 2);
+            const leftColumn = rows.slice(0, midpoint);
+            const rightColumn = rows.slice(midpoint);
+            
+            const createColumnHTML = (columnRows) => columnRows
+                .map(row => `
+                    <div class="modal-row">
+                        <div class="modal-label">${row.label}</div>
+                        <div class="modal-value">${row.value}</div>
+                    </div>
+                `).join('');
+            
+            return `
+                <div class="modal-column">
+                    ${createColumnHTML(leftColumn)}
+                </div>
+                <div class="modal-column">
+                    ${createColumnHTML(rightColumn)}
+                </div>
+            `;
+        }
+        
+        // ===== UI UTILITIES =====
+        /**
+         * Position tooltip relative to mouse cursor with viewport boundary checks
+         * @param {HTMLElement} tooltip - Tooltip element to position
+         * @param {MouseEvent} event - Mouse event for cursor position
+         */
+        function positionTooltip(tooltip, event) {
+            const viewportWidth = window.innerWidth;
+            const viewportHeight = window.innerHeight;
+            const tooltipRect = tooltip.getBoundingClientRect();
+            const offset = 10;
+            
+            let left = event.clientX + offset;
+            let top = event.clientY - tooltipRect.height - offset;
+            
+            // Adjust for right edge
+            if (left + tooltipRect.width > viewportWidth) {
+                left = event.clientX - tooltipRect.width - offset;
+            }
+            
+            // Adjust for left edge
+            if (left < 0) {
+                left = offset;
+            }
+            
+            // Adjust for top edge
+            if (top < 0) {
+                top = event.clientY + offset;
+            }
+            
+            // Adjust for bottom edge
+            if (top + tooltipRect.height > viewportHeight) {
+                top = viewportHeight - tooltipRect.height - offset;
+            }
+            
+            tooltip.style.left = `${left}px`;
+            tooltip.style.top = `${top}px`;
+        }
+        
+        /**
+         * Update the status summary display with current device counts
+         */
+        function updateStatusSummary() {
+            const filteredDevices = getFilteredDevices();
+            
+            // Get device pool based on folder filter
+            let devicePool = devices;
+            if (currentFolderFilter !== 'all') {
+                devicePool = devices.filter(device => {
+                    const deviceFolder = getDeviceFolder(device);
+                    return deviceFolder && deviceFolder.trim() === currentFolderFilter;
+                });
+            }
+            
+            const onlineCount = devicePool.filter(isDeviceOnline).length;
+            const offlineCount = devicePool.length - onlineCount;
+            const totalCount = devicePool.length;
+            
+            // Build summary text
+            const summaryParts = [
+                `<span class="online">Online: ${onlineCount}</span>`,
+                `<span class="offline">Offline: ${offlineCount}</span>`,
+                `<span>Total: ${totalCount}</span>`
+            ];
+            
+            // Add filtered count if status filter is active
+            if (currentFilter !== 'all') {
+                const filterLabel = currentFilter === 'online' ? 'Online' : 'Offline';
+                summaryParts.push(`<span>Showing: ${filteredDevices.length} ${filterLabel}</span>`);
+            }
+            
+            // Add folder filter info if active
+            if (currentFolderFilter !== 'all') {
+                summaryParts.push(`<span>Folder: ${currentFolderFilter}</span>`);
+            }
+            
+            getCachedElements().statusSummary.innerHTML = summaryParts.join(' | ');
+            
+            // Show/hide folder view button based on folder filter
+            updateFolderViewButtonVisibility();
+        }
+
+        /**
+         * Update the visibility of the folder view button
+         */
+        function updateFolderViewButtonVisibility() {
+            const folderViewBtn = document.getElementById('folderViewBtn');
+            
+            // Hide button if a specific folder is selected, show if "All Folders" is selected
+            if (currentFolderFilter !== 'all') {
+                folderViewBtn.style.display = 'none';
+                // If folder view was active, turn it off
+                if (folderViewActive) {
+                    folderViewActive = false;
+                    folderViewBtn.classList.remove('active');
+                    folderViewBtn.innerHTML = '📁 Show Folders';
+                    
+                    // Reset device grid classes
+                    const deviceGrid = document.getElementById('deviceGrid');
+                    deviceGrid.className = 'device-grid';
+                    if (currentViewMode === 'list') {
+                        deviceGrid.classList.add('list-view');
+                    }
+                }
+            } else {
+                folderViewBtn.style.display = 'inline-block';
+            }
+        }
+        
+        /**
+         * Update the last updated timestamp display
+         */
+        function updateLastUpdated() {
+            const now = new Date();
+            getCachedElements().lastUpdated.textContent = `Last updated: ${now.toLocaleString()}`;
+        }
+        
+        /**
+         * Start polling for device updates and countdown timer
+         */
+        function startPolling() {
+            // Clear existing intervals to prevent multiple timers
+            clearPollingIntervals();
+            
+            // Reset countdown
+            secondsUntilReload = CONFIG.COUNTDOWN_SECONDS;
+            updateCountdown();
+            
+            // Set up main polling interval
+            pollInterval = setInterval(loadDevices, CONFIG.POLL_INTERVAL_MS);
+            
+            // Set up countdown timer (1 second intervals)
+            countdownInterval = setInterval(() => {
+                secondsUntilReload--;
+                updateCountdown();
+                
+                if (secondsUntilReload <= 0) {
+                    secondsUntilReload = CONFIG.COUNTDOWN_SECONDS;
+                    loadDevices();
+                }
+            }, 1000);
+        }
+
+        /**
+         * Clear all polling intervals
+         */
+        function clearPollingIntervals() {
+            if (pollInterval) clearInterval(pollInterval);
+            if (countdownInterval) clearInterval(countdownInterval);
+        }
+        
+        /**
+         * Update the countdown display in the reload button
+         */
+        function updateCountdown() {
+            const { countdown } = getCachedElements();
+            countdown.textContent = `${secondsUntilReload}s`;
+        }
+        
+        /**
+         * Show loading message
+         * @param {string} message - Loading message to display
+         */
+        function showLoading(message = 'Loading...') {
+            const { loading } = getCachedElements();
+            loading.textContent = message;
+            loading.style.display = 'block';
+        }
+        
+        /**
+         * Hide loading message
+         */
+        function hideLoading() {
+            getCachedElements().loading.style.display = 'none';
+        }
+        
+        /**
+         * Show error message
+         * @param {string} message - Error message to display
+         */
+        function showError(message) {
+            const { error } = getCachedElements();
+            error.textContent = message;
+            error.style.display = 'block';
+        }
+        
+        /**
+         * Hide error message
+         */
+        function hideError() {
+            getCachedElements().error.style.display = 'none';
+        }
+        
+        // ===== EVENT HANDLERS =====
+        // Consolidated click event handler
+        document.addEventListener('click', function(e) {
+            const { modal } = getCachedElements();
+            
+            // Close modal when clicking outside
+            if (e.target === modal) {
+                closeModal();
+            }
+            
+            // Close folder dropdown when clicking outside
+            const folderContainer = document.querySelector('.folder-filter-container');
+            if (folderContainer && !folderContainer.contains(e.target)) {
+                document.getElementById('folderDropdown').classList.remove('show');
+                document.getElementById('folderFilterBtn').classList.remove('open');
+            }
+        });
+        
+        /**
+         * Handle page visibility changes to optimize performance
+         * Pause polling when page is hidden, resume when visible
+         */
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) {
+                clearPollingIntervals();
+            } else if (apiKey) {
+                loadDevices();
+                startPolling();
+            }
+        });
+        
+        /**
+         * Set the device status filter (all/online/offline)
+         * @param {string} filter - Filter type to apply
+         */
+        function setFilter(filter) {
+            currentFilter = filter;
+            
+            // If switching to online/offline only and folder view is active, disable folder view
+            if ((filter === 'online' || filter === 'offline') && folderViewActive) {
+                folderViewActive = false;
+                const folderViewBtn = document.getElementById('folderViewBtn');
+                folderViewBtn.classList.remove('active');
+                folderViewBtn.innerHTML = '📁 Show Folders';
+                
+                // Reset device grid classes
+                const deviceGrid = document.getElementById('deviceGrid');
+                deviceGrid.className = 'device-grid';
+                if (currentViewMode === 'list') {
+                    deviceGrid.classList.add('list-view');
+                }
+            }
+            
+            // Update button styles
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`filter${filter.charAt(0).toUpperCase() + filter.slice(1)}`).classList.add('active');
+            
+            // Re-render devices with new filter
+            renderDevices();
+            updateStatusSummary();
+        }
+        
+        /**
+         * Get filtered and sorted devices based on current filters
+         * @returns {Array} Filtered and sorted device array
+         */
+        function getFilteredDevices() {
+            let filteredDevices = devices;
+            
+            // Apply status filter (online/offline/all)
+            if (currentFilter !== 'all') {
+                filteredDevices = filteredDevices.filter(device => {
+                    const isOnline = isDeviceOnline(device);
+                    return currentFilter === 'online' ? isOnline : !isOnline;
+                });
+            }
+            
+            // Apply folder filter
+            if (currentFolderFilter !== 'all') {
+                filteredDevices = filteredDevices.filter(device => {
+                    const deviceFolder = getDeviceFolder(device);
+                    return deviceFolder && deviceFolder.trim() === currentFolderFilter;
+                });
+            }
+            
+            // Sort alphabetically by device name
+            return filteredDevices.sort((a, b) => {
+                const nameA = getDeviceName(a).toLowerCase();
+                const nameB = getDeviceName(b).toLowerCase();
+                return nameA.localeCompare(nameB);
+            });
+        }
+        
+        /**
+         * Manually reload devices and restart polling
+         */
+        function reloadDevices() {
+            const { reloadBtn } = getCachedElements();
+            reloadBtn.disabled = true;
+            loadDevices().finally(() => {
+                reloadBtn.disabled = false;
+                // Reset countdown and restart intervals when manually reloaded
+                startPolling();
+            });
+        }
+        
+        /**
+         * Toggle the folder filter dropdown visibility
+         */
+        function toggleFolderDropdown() {
+            const dropdown = document.getElementById('folderDropdown');
+            const button = document.getElementById('folderFilterBtn');
+            
+            dropdown.classList.toggle('show');
+            button.classList.toggle('open');
+        }
+        
+        /**
+         * Set the folder filter
+         * @param {string} folderId - Folder ID to filter by or 'all'
+         */
+        function setFolderFilter(folderId) {
+            currentFolderFilter = folderId;
+            
+            // If a specific folder is selected and folder view is active, disable folder view
+            if (folderId !== 'all' && folderViewActive) {
+                folderViewActive = false;
+                const folderViewBtn = document.getElementById('folderViewBtn');
+                folderViewBtn.classList.remove('active');
+                folderViewBtn.innerHTML = '📁 Show Folders';
+                
+                // Reset device grid classes
+                const deviceGrid = document.getElementById('deviceGrid');
+                deviceGrid.className = 'device-grid';
+                if (currentViewMode === 'list') {
+                    deviceGrid.classList.add('list-view');
+                }
+            }
+            
+            // Update dropdown items
+            document.querySelectorAll('.folder-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            
+            // Find and activate the selected item
+            const selectedItem = [...document.querySelectorAll('.folder-item')].find(item => {
+                if (folderId === 'all') {
+                    return item.textContent === 'All Folders';
+                }
+                return item.textContent === folderId;
+            });
+            
+            if (selectedItem) {
+                selectedItem.classList.add('active');
+            }
+            
+            // Close dropdown
+            document.getElementById('folderDropdown').classList.remove('show');
+            document.getElementById('folderFilterBtn').classList.remove('open');
+            
+            // Re-render devices with new filter
+            renderDevices();
+            updateStatusSummary();
+        }
+        
+        /**
+         * Set the display view mode (grid/list)
+         * @param {string} mode - View mode to set
+         */
+        function setViewMode(mode) {
+            currentViewMode = mode;
+            
+            // Update button states
+            document.querySelectorAll('.view-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(mode + 'ViewBtn').classList.add('active');
+            
+            // Update device grid class and reset container
+            const deviceGrid = document.getElementById('deviceGrid');
+            
+            // Reset all grid-related classes
+            deviceGrid.className = 'device-grid';
+            
+            // Apply view mode specific classes
+            if (mode === 'list') {
+                deviceGrid.classList.add('list-view');
+            }
+            
+            // If folder view is active, ensure proper folder view classes are applied
+            if (folderViewActive) {
+                deviceGrid.classList.remove('device-grid');
+                if (mode === 'list') {
+                    deviceGrid.classList.add('folder-view-list');
+                } else {
+                    deviceGrid.classList.remove('list-view');
+                    deviceGrid.classList.add('folder-view-grid');
+                }
+            }
+            
+            // Re-render devices with new view mode
+            renderDevices();
+        }
+
+        /**
+         * Toggle folder view on/off
+         */
+        function toggleFolderView() {
+            folderViewActive = !folderViewActive;
+            
+            // Update button appearance
+            const folderViewBtn = document.getElementById('folderViewBtn');
+            if (folderViewActive) {
+                folderViewBtn.classList.add('active');
+                folderViewBtn.innerHTML = '📁 Hide Folders';
+            } else {
+                folderViewBtn.classList.remove('active');
+                folderViewBtn.innerHTML = '📁 Show Folders';
+            }
+            
+            // Reset device grid classes
+            const deviceGrid = document.getElementById('deviceGrid');
+            deviceGrid.className = 'device-grid';
+            
+            // Re-apply view mode classes if not in folder view
+            if (!folderViewActive && currentViewMode === 'list') {
+                deviceGrid.classList.add('list-view');
+            }
+            
+            // Re-render devices
+            renderDevices();
+        }
+        
+        /**
+         * Reset all view settings to default state
+         */
+        function resetView() {
+            // Show loading immediately to prevent visual overlap
+            showLoading('Resetting view...');
+            
+            // Clear the device grid content immediately
+            const deviceGrid = document.getElementById('deviceGrid');
+            deviceGrid.innerHTML = '';
+            
+            // Use a small delay to ensure DOM updates are processed
+            setTimeout(() => {
+                // Reset all filters to default
+                currentFilter = 'all';
+                currentFolderFilter = 'all';
+                currentViewMode = 'grid';
+                folderViewActive = false;
+                
+                // Update filter button states
+                document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+                document.getElementById('filterAll').classList.add('active');
+                
+                // Reset folder view button
+                const folderViewBtn = document.getElementById('folderViewBtn');
+                folderViewBtn.classList.remove('active');
+                folderViewBtn.innerHTML = '📁 Show Folders';
+                folderViewBtn.style.display = 'inline-block';
+                
+                // Reset folder filter dropdown
+                document.querySelectorAll('.folder-item').forEach(item => {
+                    item.classList.remove('active');
+                    if (item.textContent === 'All Folders') {
+                        item.classList.add('active');
+                    }
+                });
+                
+                // Close folder dropdown if open
+                document.getElementById('folderDropdown').classList.remove('show');
+                document.getElementById('folderFilterBtn').classList.remove('open');
+                
+                // Reset view mode buttons
+                document.querySelectorAll('.view-btn').forEach(btn => btn.classList.remove('active'));
+                document.getElementById('gridViewBtn').classList.add('active');
+                
+                // Reset device grid classes
+                deviceGrid.className = 'device-grid';
+                
+                // Reload devices and restart polling with fresh data
+                loadDevices();
+                startPolling();
+            }, 50);
+        }
+
+        /**
+         * Show the API key setup modal
+         */
+        function showApiKeyModal() {
+            const modal = document.getElementById('apiKeyModal');
+            modal.style.display = 'flex';
+            
+            // Focus on input field
+            const input = document.getElementById('apiKeyModalInput');
+            setTimeout(() => input.focus(), 100);
+            
+            // Add enter key listener
+            input.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    submitApiKey();
+                }
+            });
+        }
+
+        /**
+         * Hide the API key setup modal
+         */
+        function hideApiKeyModal() {
+            const modal = document.getElementById('apiKeyModal');
+            modal.style.display = 'none';
+        }
+
+        /**
+         * Submit the API key from the modal
+         */
+        async function submitApiKey() {
+            const input = document.getElementById('apiKeyModalInput');
+            const errorDiv = document.getElementById('apiModalError');
+            const submitBtn = document.getElementById('submitApiBtn');
+            const newApiKey = input.value.trim();
+            
+            // Clear previous errors
+            errorDiv.style.display = 'none';
+            
+            if (!newApiKey) {
+                showApiModalError('Please enter an API key');
+                return;
+            }
+            
+            // Disable button and show loading
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Connecting...';
+            
+            try {
+                // Test the API key by making a simple request
+                const response = await fetch('https://app.atera.com/api/v3/agents?page=1&itemsInPage=1', {
+                    headers: {
+                        'X-API-KEY': newApiKey,
+                        'Accept': 'application/json',
+                        'Cache-Control': 'no-cache'
+                    }
+                });
+                
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        throw new Error('Invalid API key. Please check your key and try again.');
+                    } else {
+                        throw new Error(`API Error: ${response.status} ${response.statusText}`);
+                    }
+                }
+                
+                // API key is valid, save it
+                apiKey = newApiKey;
+                localStorage.setItem(CONFIG.STORAGE_KEY, apiKey);
+                
+                // Hide modal and start the application
+                hideApiKeyModal();
+                loadDevices();
+                startPolling();
+                
+            } catch (error) {
+                console.error('API key validation error:', error);
+                showApiModalError(error.message);
+            } finally {
+                // Re-enable button
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Connect';
+            }
+        }
+
+        /**
+         * Show error message in API modal
+         * @param {string} message - Error message to display
+         */
+        function showApiModalError(message) {
+            const errorDiv = document.getElementById('apiModalError');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+        
+        /**
+         * Show confirmation dialog for device deletion
+         * @param {string} deviceGuid - Device GUID to delete
+         * @param {string} deviceName - Device name for confirmation
+         */
+        function confirmDeleteDevice(deviceGuid, deviceName) {
+            const message = `Are you sure you want to delete device "${deviceName}"?\n\nThis action cannot be undone and will permanently remove the device from your Atera account.`;
+            
+            if (confirm(message)) {
+                deleteDevice(deviceGuid, deviceName);
+            }
+        }
+        
+        /**
+         * Delete a device from Atera
+         * @param {string} deviceId - Device ID/GUID to delete
+         * @param {string} deviceName - Device name for error messages
+         */
+        async function deleteDevice(deviceId, deviceName) {
+            if (!apiKey) {
+                showError('API key not configured');
+                return;
+            }
+            
+            if (!deviceId) {
+                showError('Device ID not found - cannot delete');
+                return;
+            }
+            
+            showLoading(`Deleting device ${deviceName}...`);
+            
+            try {
+                console.log(`Attempting to delete device: ${deviceName} (ID: ${deviceId})`);
+                
+                // Find the device object for validation
+                const device = devices.find(d => String(getDeviceId(d)) === String(deviceId));
+                
+                if (!device) {
+                    console.log('Device not found in devices array');
+                    throw new Error('Device not found in current device list');
+                }
+                
+                console.log('Device found:', getDeviceName(device));
+                
+                // Use the device ID directly as the agent ID for the API call
+                const agentId = deviceId;
+                
+                console.log(`Using Agent ID: ${agentId} for deletion`);
+                
+                // Call the Atera API v3 agents delete endpoint
+                const response = await makeAteraApiRequest(`agents/${agentId}`, 'DELETE');
+                
+                console.log(`Delete response status: ${response.status} ${response.statusText}`);
+                
+                // Log response body for debugging
+                const responseText = await response.text();
+                console.log('Delete response body:', responseText);
+                
+                if (!response.ok) {
+                    // Handle specific error cases
+                    if (response.status === 404) {
+                        throw new Error('Device not found or already deleted');
+                    } else if (response.status === 403) {
+                        throw new Error('Access denied - insufficient permissions to delete this device');
+                    } else if (response.status === 401) {
+                        throw new Error('Invalid API key');
+                    } else if (response.status === 405) {
+                        throw new Error('Delete operation not allowed - device may have dependencies');
+                    } else {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}${responseText ? ` - ${responseText}` : ''}`);
+                    }
+                }
+                
+                console.log(`Successfully deleted device: ${deviceName}`);
+                
+                // Show success message
+                showLoading(`Device ${deviceName} deleted successfully. Refreshing...`);
+                
+                // Reload devices to reflect the deletion and restart polling
+                await loadDevices();
+                startPolling();
+                
+            } catch (error) {
+                console.error('Error deleting device:', error);
+                showError(`Failed to delete device "${deviceName}": ${error.message}`);
+                hideLoading();
+            }
+        }
+    </script>
+</body>
+</html>
