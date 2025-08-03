@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
-import { AlertCircle, Loader2 } from 'lucide-react';
+import { AlertCircle, Loader2, Monitor } from 'lucide-react';
 import { AteraDevice, DeviceFilter, ViewMode } from '@/app/types/atera';
 import { apiClient } from '@/app/lib/atera-api';
 import { FilterBar } from '@/app/components/FilterBar';
@@ -169,28 +169,42 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow-sm">
-        <div className="max-w-[1200px] mx-auto px-4 py-4">
+      <a href="#main-content" className="skip-link">
+        Skip to main content
+      </a>
+      
+      <header className="bg-white/90 backdrop-blur-sm shadow-sm border-b border-gray-200" role="banner">
+        <div className="max-w-[1200px] mx-auto px-6 py-6">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Image
-                src="/atera/images/logo.jpg"
-                alt="Atera Logo"
-                width={162}
-                height={48}
-                className="object-contain"
-              />
-              <h1 className="text-2xl font-semibold text-gray-900">
-                Device Status Dashboard
-              </h1>
+            <div className="flex items-center gap-6">
+              <div className="relative">
+                <Image
+                  src="/atera/images/logo.jpg"
+                  alt="Atera Logo"
+                  width={162}
+                  height={48}
+                  className="object-contain"
+                />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900 mb-1">
+                  Device Status Dashboard
+                </h1>
+                <p className="text-sm text-gray-600">
+                  Real-time monitoring and management
+                </p>
+              </div>
             </div>
             {lastUpdated && (
-              <div className="text-sm text-gray-600">
-                Last updated: {lastUpdated.toLocaleTimeString()}
+              <div className="text-right">
+                <div className="text-sm text-gray-600 mb-1">
+                  Last updated: {lastUpdated.toLocaleTimeString()}
+                </div>
                 {isPolling && !isLoading && (
-                  <span className="ml-2 text-blue-600">
-                    (next refresh in {countdown}s)
-                  </span>
+                  <div className="flex items-center gap-2 text-xs text-blue-600">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                    <span>Next refresh in {countdown}s</span>
+                  </div>
                 )}
               </div>
             )}
@@ -220,47 +234,97 @@ export default function Home() {
         }}
       />
 
-      <main className="max-w-[1200px] mx-auto px-4 py-6">
+      <main id="main-content" className="max-w-[1200px] mx-auto px-6 py-8" role="main" aria-label="Device dashboard content">
         {isLoading && (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
-            <span className="ml-3 text-gray-600">Loading devices...</span>
+          <div className="flex flex-col items-center justify-center py-16" role="status" aria-live="polite">
+            <div className="relative" aria-hidden="true">
+              <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-500 rounded-full animate-spin"></div>
+              <div className="absolute inset-0 w-16 h-16 border-4 border-transparent border-r-purple-500 rounded-full animate-spin reverse-spin"></div>
+            </div>
+            <div className="mt-6 text-center">
+              <h2 className="text-lg font-semibold text-gray-900 mb-2">Loading devices...</h2>
+              <p className="text-gray-600">Fetching the latest device information</p>
+            </div>
+            
+            {/* Loading skeleton */}
+            <div className="mt-8 w-full max-w-4xl">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {[...Array(8)].map((_, i) => (
+                  <div key={i} className="modern-card p-6 animate-pulse">
+                    <div className="flex flex-col items-center space-y-3">
+                      <div className="w-12 h-12 bg-gray-300 rounded-full"></div>
+                      <div className="h-4 bg-gray-300 rounded w-20"></div>
+                      <div className="h-3 bg-gray-200 rounded w-16"></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         )}
 
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6 flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="text-red-800 font-medium">Error</p>
-              <p className="text-red-600 text-sm mt-1">{error}</p>
+          <div className="max-w-2xl mx-auto" role="alert" aria-live="assertive">
+            <div className="modern-card p-6 border-l-4 border-red-500 bg-red-50 animate-fade-in">
+              <div className="flex items-start gap-4">
+                <div className="flex-shrink-0" aria-hidden="true">
+                  <AlertCircle className="w-6 h-6 text-red-600" />
+                </div>
+                <div className="flex-1">
+                  <h2 className="text-lg font-semibold text-red-800 mb-2">Connection Error</h2>
+                  <p className="text-red-700 mb-4">{error}</p>
+                  <button
+                    onClick={loadDevices}
+                    className="btn-primary bg-red-600 hover:bg-red-700 focus-ring"
+                    aria-label="Retry loading devices"
+                  >
+                    Try Again
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         )}
 
         {!isLoading && !error && devices.length === 0 && (
-          <div className="text-center py-12 text-gray-500">
-            <p className="text-lg mb-2">No devices found</p>
-            <p className="text-sm">Check your API key and try refreshing</p>
+          <div className="text-center py-16" role="status" aria-live="polite">
+            <div className="max-w-md mx-auto">
+              <div className="w-24 h-24 mx-auto mb-6 bg-gray-100 rounded-full flex items-center justify-center" aria-hidden="true">
+                <Monitor className="w-12 h-12 text-gray-400" />
+              </div>
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">No devices found</h2>
+              <p className="text-gray-600 mb-6">
+                It looks like there are no devices connected to your account yet.
+              </p>
+              <button
+                onClick={loadDevices}
+                className="btn-primary focus-ring"
+                aria-label="Refresh device list"
+              >
+                Refresh Devices
+              </button>
+            </div>
           </div>
         )}
 
         {!isLoading && !error && filteredDevices.length > 0 && (
-          isFolderView ? (
-            <FolderView
-              devices={filteredDevices}
-              viewMode={viewMode}
-              onShowDetails={setSelectedDevice}
-              onDeleteDevice={handleDeleteDevice}
-            />
-          ) : (
-            <DeviceGrid
-              devices={filteredDevices}
-              viewMode={viewMode}
-              onShowDetails={setSelectedDevice}
-              onDeleteDevice={handleDeleteDevice}
-            />
-          )
+          <div className="animate-fade-in">
+            {isFolderView ? (
+              <FolderView
+                devices={filteredDevices}
+                viewMode={viewMode}
+                onShowDetails={setSelectedDevice}
+                onDeleteDevice={handleDeleteDevice}
+              />
+            ) : (
+              <DeviceGrid
+                devices={filteredDevices}
+                viewMode={viewMode}
+                onShowDetails={setSelectedDevice}
+                onDeleteDevice={handleDeleteDevice}
+              />
+            )}
+          </div>
         )}
       </main>
 

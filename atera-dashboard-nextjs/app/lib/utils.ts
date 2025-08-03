@@ -128,13 +128,30 @@ export function getDeviceInfo(device: AteraDevice, extended = false) {
   const ipAddress = device.IpAddresses?.[0] || 'Unknown';
   const memory = device.Memory ? `${Math.round(device.Memory / 1024)} GB` : 'Unknown';
   
+  // Enhanced OS information following original HTML logic
+  let osVersion = 'Unknown';
+  if (device.OS) {
+    osVersion = device.OS;
+    // Add OS version details if available
+    if ((device as any).OSVersion) {
+      osVersion += ` ${(device as any).OSVersion}`;
+    }
+  } else if ((device as any).OSNum) {
+    osVersion = `Windows ${(device as any).OSNum}`;
+  }
+  
+  // Add build info if extended and available
+  if (extended && (device as any).OSBuild) {
+    osVersion += ` (Build ${(device as any).OSBuild})`;
+  }
+  
   const cleanLoggedUser = loggedUser?.includes('(Since:') 
     ? loggedUser.split('(Since:')[0].trim()
     : loggedUser;
   
   const result = {
     deviceName: getDeviceName(device),
-    os: device.OS || 'Unknown',
+    os: osVersion,
     ipAddress,
     memory,
     loggedUser: cleanLoggedUser,
