@@ -1,15 +1,17 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import Image from 'next/image';
-import { AlertCircle, Loader2, Monitor } from 'lucide-react';
+import { AlertCircle, Monitor } from 'lucide-react';
 import { AteraDevice, DeviceFilter, ViewMode } from '@/app/types/atera';
 import { apiClient } from '@/app/lib/atera-api';
+import { secureStorage } from '@/app/lib/secure-storage';
 import { FilterBar } from '@/app/components/FilterBar';
 import { DeviceGrid } from '@/app/components/DeviceGrid';
 import { FolderView } from '@/app/components/FolderView';
 import { DeviceModal } from '@/app/components/DeviceModal';
 import { ApiKeyModal } from '@/app/components/ApiKeyModal';
+import { DeviceSkeleton, PageLoader } from '@/app/components/LoadingStates';
 import { getDeviceName, getDeviceFolder, isDeviceOnline, getDeviceId } from '@/app/lib/utils';
 
 export default function Home() {
@@ -28,14 +30,34 @@ export default function Home() {
   const [isPolling, setIsPolling] = useState(false);
 
   useEffect(() => {
-    const savedApiKey = localStorage.getItem('atera_api_key');
-    if (savedApiKey) {
-      apiClient.setApiKey(savedApiKey);
-      loadDevices();
-      setIsPolling(true);
-    } else {
-      setShowApiKeyModal(true);
-    }
+    const initializeApiKey = async () => {
+      try {
+        // First check for new secure storage
+        let apiKey = await secureStorage.getApiKey();
+        
+        // If not found, check for legacy storage and migrate
+        if (!apiKey) {
+          const legacyKey = secureStorage.getLegacyApiKey();
+          if (legacyKey) {
+            await secureStorage.migrateLegacyApiKey();
+            apiKey = legacyKey;
+          }
+        }
+        
+        if (apiKey) {
+          apiClient.setApiKey(apiKey);
+          loadDevices();
+          setIsPolling(true);
+        } else {
+          setShowApiKeyModal(true);
+        }
+      } catch (error) {
+        console.error('Failed to initialize API key:', error);
+        setShowApiKeyModal(true);
+      }
+    };
+    
+    initializeApiKey();
   }, []);
 
   useEffect(() => {
@@ -103,7 +125,8 @@ export default function Home() {
     }
   };
 
-  const getFilteredDevices = useCallback(() => {
+  // Memoize expensive filtering operation for better performance
+  const filteredDevices = useMemo(() => {
     let filtered = [...devices];
     
     if (currentFilter !== 'all') {
@@ -154,8 +177,6 @@ export default function Home() {
       return nameA.localeCompare(nameB);
     });
   }, [devices, currentFilter, selectedFolder, searchQuery]);
-
-  const filteredDevices = getFilteredDevices();
   const onlineCount = devices.filter(isDeviceOnline).length;
   const offlineCount = devices.length - onlineCount;
 
@@ -235,33 +256,7 @@ export default function Home() {
       />
 
       <main id="main-content" className="max-w-[1200px] mx-auto px-6 py-8" role="main" aria-label="Device dashboard content">
-        {isLoading && (
-          <div className="flex flex-col items-center justify-center py-16" role="status" aria-live="polite">
-            <div className="relative" aria-hidden="true">
-              <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-500 rounded-full animate-spin"></div>
-              <div className="absolute inset-0 w-16 h-16 border-4 border-transparent border-r-purple-500 rounded-full animate-spin reverse-spin"></div>
-            </div>
-            <div className="mt-6 text-center">
-              <h2 className="text-lg font-semibold text-gray-900 mb-2">Loading devices...</h2>
-              <p className="text-gray-600">Fetching the latest device information</p>
-            </div>
-            
-            {/* Loading skeleton */}
-            <div className="mt-8 w-full max-w-4xl">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {[...Array(8)].map((_, i) => (
-                  <div key={i} className="modern-card p-6 animate-pulse">
-                    <div className="flex flex-col items-center space-y-3">
-                      <div className="w-12 h-12 bg-gray-300 rounded-full"></div>
-                      <div className="h-4 bg-gray-300 rounded w-20"></div>
-                      <div className="h-3 bg-gray-200 rounded w-16"></div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
+        {isLoading && <PageLoader />}
 
         {error && (
           <div className="max-w-2xl mx-auto" role="alert" aria-live="assertive">

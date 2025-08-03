@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo, memo } from 'react';
 import { ChevronDown, ChevronRight, Folder, FolderOpen } from 'lucide-react';
 import { AteraDevice } from '@/app/types/atera';
 import { DeviceItem } from './DeviceItem';
@@ -22,7 +22,7 @@ interface FolderSectionProps {
   isNoFolder?: boolean;
 }
 
-function FolderSection({ 
+const FolderSection = memo(function FolderSection({ 
   folderName, 
   devices, 
   viewMode, 
@@ -31,8 +31,15 @@ function FolderSection({
   isNoFolder 
 }: FolderSectionProps) {
   const [isExpanded, setIsExpanded] = useState(true);
-  const onlineCount = devices.filter(isDeviceOnline).length;
-  const offlineCount = devices.length - onlineCount;
+  
+  // Memoize device counts for performance
+  const { onlineCount, offlineCount } = useMemo(() => {
+    const online = devices.filter(isDeviceOnline).length;
+    return {
+      onlineCount: online,
+      offlineCount: devices.length - online
+    };
+  }, [devices]);
 
   return (
     <div className="mb-6">
@@ -71,24 +78,30 @@ function FolderSection({
       )}
     </div>
   );
-}
+});
 
-export function FolderView({ devices, viewMode, onShowDetails, onDeleteDevice }: FolderViewProps) {
-  const devicesByFolder = devices.reduce((acc, device) => {
-    const folderName = getDeviceFolder(device);
-    const key = folderName && folderName.trim() ? folderName.trim() : '__no_folder__';
-    
-    if (!acc[key]) {
-      acc[key] = [];
-    }
-    acc[key].push(device);
-    
-    return acc;
-  }, {} as Record<string, AteraDevice[]>);
+function FolderViewComponent({ devices, viewMode, onShowDetails, onDeleteDevice }: FolderViewProps) {
+  // Memoize expensive grouping operation for better performance
+  const devicesByFolder = useMemo(() => {
+    return devices.reduce((acc, device) => {
+      const folderName = getDeviceFolder(device);
+      const key = folderName && folderName.trim() ? folderName.trim() : '__no_folder__';
+      
+      if (!acc[key]) {
+        acc[key] = [];
+      }
+      acc[key].push(device);
+      
+      return acc;
+    }, {} as Record<string, AteraDevice[]>);
+  }, [devices]);
 
-  const sortedFolders = Object.keys(devicesByFolder)
-    .filter(key => key !== '__no_folder__')
-    .sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+  // Memoize sorted folders calculation
+  const sortedFolders = useMemo(() => {
+    return Object.keys(devicesByFolder)
+      .filter(key => key !== '__no_folder__')
+      .sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+  }, [devicesByFolder]);
 
   return (
     <div className={cn(
@@ -119,3 +132,6 @@ export function FolderView({ devices, viewMode, onShowDetails, onDeleteDevice }:
     </div>
   );
 }
+
+// Memoize the component to prevent unnecessary re-renders
+export const FolderView = memo(FolderViewComponent);

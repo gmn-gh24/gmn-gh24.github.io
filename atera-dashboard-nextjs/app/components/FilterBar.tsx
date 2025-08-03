@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo, memo } from 'react';
 import { Search, Grid, List, FolderOpen, RotateCw, RefreshCw, Filter, BarChart3, X } from 'lucide-react';
 import { DeviceFilter, ViewMode, AteraDevice } from '@/app/types/atera';
 import { cn } from '@/app/lib/utils';
@@ -27,7 +28,7 @@ interface FilterBarProps {
   };
 }
 
-export function FilterBar({
+function FilterBarComponent({
   currentFilter,
   viewMode,
   isFolderView,
@@ -44,8 +45,8 @@ export function FilterBar({
   isLoading,
   deviceCounts
 }: FilterBarProps) {
-  // Get filtered device counts based on current folder selection
-  const getFilteredDeviceCounts = () => {
+  // Memoize expensive device count calculations for better performance
+  const currentCounts = useMemo(() => {
     if (!selectedFolder) {
       return deviceCounts;
     }
@@ -69,9 +70,7 @@ export function FilterBar({
       online: onlineCount,
       offline: folderDevices.length - onlineCount
     };
-  };
-
-  const currentCounts = getFilteredDeviceCounts();
+  }, [selectedFolder, devices, deviceCounts]);
 
   return (
     <div className="bg-white/95 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-10 shadow-sm" role="navigation" aria-label="Device filtering and controls">
@@ -262,3 +261,6 @@ export function FilterBar({
     </div>
   );
 }
+
+// Memoize the component to prevent unnecessary re-renders
+export const FilterBar = memo(FilterBarComponent);

@@ -1,20 +1,28 @@
 import { AteraDevice, AteraApiResponse } from '@/app/types/atera';
+import { APP_CONFIG, API_ENDPOINTS } from './constants';
+import { validateApiKey } from './validation';
 
 const CONFIG = {
-  API_BASE_URL: 'https://app.atera.com/api/v3',
-  ITEMS_PER_PAGE: 50,
-  REQUEST_TIMEOUT_MS: 30000,
-  RETRY_DELAY_MS: 1000,
-  MAX_RETRIES: 3,
-  REFRESH_INTERVAL_MS: 30000,
+  API_BASE_URL: API_ENDPOINTS.BASE_URL,
+  ITEMS_PER_PAGE: APP_CONFIG.MAX_DEVICES_PER_PAGE,
+  REQUEST_TIMEOUT_MS: APP_CONFIG.REQUEST_TIMEOUT,
+  RETRY_DELAY_MS: APP_CONFIG.RETRY_DELAY,
+  MAX_RETRIES: APP_CONFIG.MAX_RETRIES,
+  REFRESH_INTERVAL_MS: APP_CONFIG.POLLING_INTERVAL,
   REFRESH_COUNTDOWN_INTERVAL_MS: 1000
 };
 
 export class AteraApiClient {
   private apiKey: string | null = null;
 
-  setApiKey(key: string) {
-    this.apiKey = key;
+  setApiKey(apiKey: string): void {
+    // Validate the API key before setting it
+    const validation = validateApiKey(apiKey);
+    if (!validation.isValid) {
+      throw new Error(validation.error || 'Invalid API key');
+    }
+    
+    this.apiKey = apiKey;
   }
 
   getApiKey(): string | null {
@@ -103,7 +111,7 @@ export class AteraApiClient {
     return allDevices;
   }
 
-  async deleteDevice(agentId: number, deviceName: string): Promise<boolean> {
+  async deleteDevice(agentId: number, _deviceName: string): Promise<boolean> {
     try {
       const response = await this.makeRequest(`agents/${agentId}`, 'DELETE');
       
@@ -127,8 +135,8 @@ export class AteraApiClient {
   }
 
   async validateApiKey(apiKey: string): Promise<boolean> {
+    const tempApiKey = this.apiKey;
     try {
-      const tempApiKey = this.apiKey;
       this.apiKey = apiKey;
       
       const response = await this.makeRequest('agents?page=1&itemsInPage=1');
@@ -138,7 +146,7 @@ export class AteraApiClient {
       
       return response.ok && data.items !== undefined;
     } catch (error) {
-      this.apiKey = this.apiKey;
+      this.apiKey = tempApiKey;
       return false;
     }
   }

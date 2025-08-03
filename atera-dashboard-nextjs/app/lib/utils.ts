@@ -23,16 +23,6 @@ export function getDeviceId(device: AteraDevice): string | number {
   return id || 'unknown';
 }
 
-export function escapeHtml(str: string): string {
-  const map: Record<string, string> = {
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&#39;'
-  };
-  return str.replace(/[&<>"']/g, (m) => map[m]);
-}
 
 export function formatTimeDifference(date: Date): string {
   const diffMs = Date.now() - date.getTime();

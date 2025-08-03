@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
-import { Monitor, MoreVertical, Trash2, User, HardDrive, Cpu, Calendar, ExternalLink } from 'lucide-react';
+import { useState, useRef, useEffect, useMemo, memo } from 'react';
+import { MoreVertical, Trash2, User, HardDrive, Cpu, ExternalLink } from 'lucide-react';
 import { AteraDevice } from '@/app/types/atera';
 import { DeviceCircle } from './DeviceCircle';
-import { cn, getDeviceName, getDeviceStatus, getDeviceInfo, isLongOffline, getDaysOffline } from '@/app/lib/utils';
+import { cn, getDeviceName, getDeviceStatus, getDeviceInfo, isLongOffline } from '@/app/lib/utils';
 
 interface DeviceItemProps {
   device: AteraDevice;
@@ -13,23 +13,26 @@ interface DeviceItemProps {
   onDelete?: (device: AteraDevice) => void;
 }
 
-export function DeviceItem({ device, viewMode, onShowDetails, onDelete }: DeviceItemProps) {
+function DeviceItemComponent({ device, viewMode, onShowDetails, onDelete }: DeviceItemProps) {
   const [showTooltip, setShowTooltip] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [tooltipPosition, setTooltipPosition] = useState<'top' | 'bottom'>('top');
   const tooltipRef = useRef<HTMLDivElement>(null);
   const circleRef = useRef<HTMLDivElement>(null);
-  const { isOnline, lastSeen } = getDeviceStatus(device);
-  const deviceName = getDeviceName(device);
-  const info = getDeviceInfo(device, true); // Get extended info for tooltip
-  const longOffline = isLongOffline(device);
+  
+  // Memoize expensive computations
+  const deviceStatus = useMemo(() => getDeviceStatus(device), [device]);
+  const deviceName = useMemo(() => getDeviceName(device), [device]);
+  const deviceInfo = useMemo(() => getDeviceInfo(device, true), [device]);
+  const longOffline = useMemo(() => isLongOffline(device), [device]);
+  
+  const { isOnline, lastSeen } = deviceStatus;
 
   const checkTooltipPosition = () => {
     if (!circleRef.current || !tooltipRef.current) return;
     
     const circleRect = circleRef.current.getBoundingClientRect();
     const tooltipRect = tooltipRef.current.getBoundingClientRect();
-    const viewportHeight = window.innerHeight;
     
     // Check if tooltip would be cut off at the top
     const tooltipTop = circleRect.top - tooltipRect.height - 8; // 8px margin
@@ -47,6 +50,7 @@ export function DeviceItem({ device, viewMode, onShowDetails, onDelete }: Device
       const timer = setTimeout(checkTooltipPosition, 10);
       return () => clearTimeout(timer);
     }
+    return undefined;
   }, [showTooltip]);
 
   const handleDelete = (e: React.MouseEvent) => {
@@ -93,21 +97,21 @@ export function DeviceItem({ device, viewMode, onShowDetails, onDelete }: Device
             <div className="flex items-center gap-2 text-sm text-gray-700 min-w-0">
               <User className="w-4 h-4 flex-shrink-0" />
               <div className="truncate">
-                <span className="font-semibold">User:</span> {info.loggedUser}
+                <span className="font-semibold">User:</span> {deviceInfo.loggedUser}
               </div>
             </div>
             
             <div className="flex items-center gap-2 text-sm text-gray-700 min-w-0">
               <HardDrive className="w-4 h-4 flex-shrink-0" />
               <div className="truncate">
-                <span className="font-semibold">IP:</span> {info.ipAddress}
+                <span className="font-semibold">IP:</span> {deviceInfo.ipAddress}
               </div>
             </div>
             
             <div className="flex items-center gap-2 text-sm text-gray-700 min-w-0">
               <Cpu className="w-4 h-4 flex-shrink-0" />
               <div className="truncate">
-                <span className="font-semibold">OS:</span> {info.os}
+                <span className="font-semibold">OS:</span> {deviceInfo.os}
               </div>
             </div>
           </div>
@@ -217,43 +221,43 @@ export function DeviceItem({ device, viewMode, onShowDetails, onDelete }: Device
         >
           <div className="space-y-1 text-left">
             <div className="tooltip-row"><span className="font-bold text-gray-300">Device:</span> {deviceName}</div>
-            <div className="tooltip-row"><span className="font-bold text-gray-300">Last Reboot:</span> {info.lastReboot}</div>
-            <div className="tooltip-row"><span className="font-bold text-gray-300">Logged User:</span> {info.loggedUser}</div>
+            <div className="tooltip-row"><span className="font-bold text-gray-300">Last Reboot:</span> {deviceInfo.lastReboot}</div>
+            <div className="tooltip-row"><span className="font-bold text-gray-300">Logged User:</span> {deviceInfo.loggedUser}</div>
             <div className="tooltip-row"><span className="font-bold text-gray-300">Status:</span> {isOnline ? 'Online' : lastSeen}</div>
-            <div className="tooltip-row"><span className="font-bold text-gray-300">OS:</span> {info.os}</div>
-            <div className="tooltip-row"><span className="font-bold text-gray-300">IP Address:</span> {info.ipAddress}</div>
-            <div className="tooltip-row"><span className="font-bold text-gray-300">Memory:</span> {info.memory}</div>
-            {info.extended && (
+            <div className="tooltip-row"><span className="font-bold text-gray-300">OS:</span> {deviceInfo.os}</div>
+            <div className="tooltip-row"><span className="font-bold text-gray-300">IP Address:</span> {deviceInfo.ipAddress}</div>
+            <div className="tooltip-row"><span className="font-bold text-gray-300">Memory:</span> {deviceInfo.memory}</div>
+            {deviceInfo.extended && (
               <>
-                {info.extended.cpu && info.extended.cpu !== 'Unknown Computer' && info.extended.cpu !== 'Unknown Unknown' && (
-                  <div className="tooltip-row"><span className="font-bold text-gray-300">Processor:</span> {info.extended.cpu}</div>
+                {deviceInfo.extended.cpu && deviceInfo.extended.cpu !== 'Unknown Computer' && deviceInfo.extended.cpu !== 'Unknown Unknown' && (
+                  <div className="tooltip-row"><span className="font-bold text-gray-300">Processor:</span> {deviceInfo.extended.cpu}</div>
                 )}
-                {info.extended.biosInfo !== 'Unknown' && (
+                {deviceInfo.extended.biosInfo !== 'Unknown' && (
                   <div className="tooltip-row">
                     <span className="font-bold text-gray-300">BIOS:</span> 
-                    {info.extended.biosDate !== 'Unknown' ? `${info.extended.biosInfo} (${info.extended.biosDate})` : info.extended.biosInfo}
+                    {deviceInfo.extended.biosDate !== 'Unknown' ? `${deviceInfo.extended.biosInfo} (${deviceInfo.extended.biosDate})` : deviceInfo.extended.biosInfo}
                   </div>
                 )}
-                {info.extended.vendorModel !== 'Unknown' && (
-                  <div className="tooltip-row"><span className="font-bold text-gray-300">Model:</span> {info.extended.vendorModel}</div>
+                {deviceInfo.extended.vendorModel !== 'Unknown' && (
+                  <div className="tooltip-row"><span className="font-bold text-gray-300">Model:</span> {deviceInfo.extended.vendorModel}</div>
                 )}
-                {info.extended.vendorSerial !== 'Unknown' && (
-                  <div className="tooltip-row"><span className="font-bold text-gray-300">Serial:</span> {info.extended.vendorSerial}</div>
+                {deviceInfo.extended.vendorSerial !== 'Unknown' && (
+                  <div className="tooltip-row"><span className="font-bold text-gray-300">Serial:</span> {deviceInfo.extended.vendorSerial}</div>
                 )}
-                {info.extended.motherboard !== 'Unknown' && (
-                  <div className="tooltip-row"><span className="font-bold text-gray-300">Motherboard:</span> {info.extended.motherboard}</div>
+                {deviceInfo.extended.motherboard !== 'Unknown' && (
+                  <div className="tooltip-row"><span className="font-bold text-gray-300">Motherboard:</span> {deviceInfo.extended.motherboard}</div>
                 )}
-                {info.extended.domainName !== 'Not domain joined' && (
-                  <div className="tooltip-row"><span className="font-bold text-gray-300">Domain:</span> {info.extended.domainName}</div>
+                {deviceInfo.extended.domainName !== 'Not domain joined' && (
+                  <div className="tooltip-row"><span className="font-bold text-gray-300">Domain:</span> {deviceInfo.extended.domainName}</div>
                 )}
-                {info.extended.macAddresses !== 'Unknown' && (
-                  <div className="tooltip-row"><span className="font-bold text-gray-300">MAC Address:</span> {info.extended.macAddresses}</div>
+                {deviceInfo.extended.macAddresses !== 'Unknown' && (
+                  <div className="tooltip-row"><span className="font-bold text-gray-300">MAC Address:</span> {deviceInfo.extended.macAddresses}</div>
                 )}
-                {info.extended.windowsSerial !== 'Unknown' && (
-                  <div className="tooltip-row"><span className="font-bold text-gray-300">Windows Serial:</span> {info.extended.windowsSerial}</div>
+                {deviceInfo.extended.windowsSerial !== 'Unknown' && (
+                  <div className="tooltip-row"><span className="font-bold text-gray-300">Windows Serial:</span> {deviceInfo.extended.windowsSerial}</div>
                 )}
-                {info.extended.reportedFromIP !== 'Unknown' && (
-                  <div className="tooltip-row"><span className="font-bold text-gray-300">Public IP:</span> {info.extended.reportedFromIP}</div>
+                {deviceInfo.extended.reportedFromIP !== 'Unknown' && (
+                  <div className="tooltip-row"><span className="font-bold text-gray-300">Public IP:</span> {deviceInfo.extended.reportedFromIP}</div>
                 )}
               </>
             )}
@@ -270,3 +274,6 @@ export function DeviceItem({ device, viewMode, onShowDetails, onDelete }: Device
     </div>
   );
 }
+
+// Memoize the component to prevent unnecessary re-renders
+export const DeviceItem = memo(DeviceItemComponent);

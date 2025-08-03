@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { Key, AlertCircle } from 'lucide-react';
 import { apiClient } from '@/app/lib/atera-api';
+import { secureStorage } from '@/app/lib/secure-storage';
+import { validateApiKey, sanitizeInput } from '@/app/lib/validation';
 
 interface ApiKeyModalProps {
   isOpen: boolean;
@@ -19,15 +21,17 @@ export function ApiKeyModal({ isOpen, onClose, onSuccess }: ApiKeyModalProps) {
     e.preventDefault();
     setError('');
     
-    const trimmedKey = apiKey.trim();
+    const trimmedKey = sanitizeInput(apiKey.trim());
     
     if (!trimmedKey) {
       setError('Please enter an API key');
       return;
     }
     
-    if (trimmedKey.length < 20) {
-      setError('API key appears to be too short. Please check and try again.');
+    // Validate API key format first
+    const validation = validateApiKey(trimmedKey);
+    if (!validation.isValid) {
+      setError(validation.error || 'Invalid API key format');
       return;
     }
     
@@ -38,7 +42,11 @@ export function ApiKeyModal({ isOpen, onClose, onSuccess }: ApiKeyModalProps) {
       
       if (isValid) {
         apiClient.setApiKey(trimmedKey);
-        localStorage.setItem('atera_api_key', trimmedKey);
+        await secureStorage.setApiKey(trimmedKey);
+        
+        // Remove legacy storage
+        localStorage.removeItem('atera_api_key');
+        
         onSuccess();
         onClose();
       } else {

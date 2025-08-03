@@ -1,5 +1,6 @@
 'use client';
 
+import { memo } from 'react';
 import { AteraDevice } from '@/app/types/atera';
 import { DeviceItem } from './DeviceItem';
 import { cn } from '@/app/lib/utils';
@@ -12,7 +13,7 @@ interface DeviceGridProps {
   className?: string;
 }
 
-export function DeviceGrid({ 
+function DeviceGridComponent({ 
   devices, 
   viewMode, 
   onShowDetails, 
@@ -46,3 +47,6 @@ export function DeviceGrid({
     </div>
   );
 }
+
+// Memoize the component to prevent unnecessary re-renders
+export const DeviceGrid = memo(DeviceGridComponent);

@@ -1,0 +1,106 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        cache-dependency-path: 'atera-dashboard-nextjs/package-lock.json'
+    
+    - name: Install dependencies
+      working-directory: ./atera-dashboard-nextjs
+      run: npm ci
+    
+    - name: Run type checking
+      working-directory: ./atera-dashboard-nextjs
+      run: npm run type-check
+    
+    - name: Run linting
+      working-directory: ./atera-dashboard-nextjs
+      run: npm run lint
+    
+    - name: Run tests
+      working-directory: ./atera-dashboard-nextjs
+      run: npm run test:coverage
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./atera-dashboard-nextjs/coverage/lcov.info
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+    
+    - name: Build application
+      working-directory: ./atera-dashboard-nextjs
+      run: npm run build
+      
+    - name: Export static files
+      working-directory: ./atera-dashboard-nextjs  
+      run: npm run export
+      if: success()
+
+  security:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Run security audit
+      working-directory: ./atera-dashboard-nextjs
+      run: npm audit --audit-level=high
+    
+    - name: Run Snyk security scan
+      uses: snyk/actions/node@master
+      env:
+        SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      with:
+        args: --severity-threshold=high
+        command: test
+
+  deploy:
+    needs: [test, security]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        cache-dependency-path: 'atera-dashboard-nextjs/package-lock.json'
+    
+    - name: Install dependencies
+      working-directory: ./atera-dashboard-nextjs
+      run: npm ci
+    
+    - name: Build for production
+      working-directory: ./atera-dashboard-nextjs
+      run: npm run build
+    
+    - name: Deploy to GitHub Pages
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./atera-dashboard-nextjs/out
+        cname: your-custom-domain.com  # Optional: replace with your domain
