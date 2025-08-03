@@ -242,13 +242,37 @@
             margin-bottom: 20px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             position: relative;
+            justify-content: space-between;
+        }
+        
+        .search-container {
+            flex-shrink: 0;
+        }
+        
+        .search-input {
+            padding: 8px 12px;
+            border: 2px solid #ddd;
+            border-radius: 20px;
+            font-size: 12px;
+            width: 200px;
+            outline: none;
+            transition: border-color 0.3s ease;
+        }
+        
+        .search-input:focus {
+            border-color: #4CAF50;
+        }
+        
+        .search-input::placeholder {
+            color: #999;
         }
         
         .filter-buttons {
             display: flex;
             align-items: center;
             gap: 8px;
-            margin: 0 auto;
+            flex: 1;
+            justify-content: center;
         }
         
         .view-toggle {
@@ -917,12 +941,12 @@
     </div>
     
     <div class="filter-controls">
+        <div class="search-container">
+            <input type="text" id="searchInput" placeholder="Search devices..." 
+                   class="search-input" 
+                   oninput="handleSearch(this.value)" />
+        </div>
         <div class="filter-buttons">
-            <div class="search-container" style="margin-right: 15px;">
-                <input type="text" id="searchInput" placeholder="Search devices..." 
-                       style="padding: 8px 12px; border: 2px solid #ddd; border-radius: 20px; font-size: 12px; width: 200px; outline: none;" 
-                       oninput="handleSearch(this.value)" />
-            </div>
             <button class="filter-btn active" onclick="setFilter('all')" id="filterAll">All Devices</button>
             <button class="filter-btn online" onclick="setFilter('online')" id="filterOnline">Online Only</button>
             <button class="filter-btn offline" onclick="setFilter('offline')" id="filterOffline">Offline Only</button>
