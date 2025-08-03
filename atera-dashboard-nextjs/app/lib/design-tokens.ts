@@ -47,7 +47,7 @@ export const designTokens = {
     semantic: {
       success: {
         light: '#d1fae5',
-        default: '#10b981',
+        default: '#059669',
         dark: '#059669',
       },
       warning: {

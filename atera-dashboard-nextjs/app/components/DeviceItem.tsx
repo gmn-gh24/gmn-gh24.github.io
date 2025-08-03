@@ -180,23 +180,24 @@ function DeviceItemComponent({ device, viewMode, onShowDetails, onDelete }: Devi
   }
 
   return (
-    <div className="flex flex-col items-center text-center relative">
-      <div
-        ref={circleRef}
-        onMouseEnter={() => setShowTooltip(true)}
-        onMouseLeave={() => setShowTooltip(false)}
-      >
-        <DeviceCircle 
-          status={isOnline ? 'online' : 'offline'}
-          onClick={() => onShowDetails(device)}
-          className="mb-2"
-          showIcon={true}
-        />
-      </div>
-      
-      <div className="text-sm font-medium text-gray-900 truncate max-w-[120px]" title={deviceName}>
-        {deviceName}
-      </div>
+    <div className="bg-gray-50 rounded-xl p-4 hover:bg-gray-100 transition-colors duration-200 shadow-sm hover:shadow-md">
+      <div className="flex flex-col items-center text-center relative">
+        <div
+          ref={circleRef}
+          onMouseEnter={() => setShowTooltip(true)}
+          onMouseLeave={() => setShowTooltip(false)}
+        >
+          <DeviceCircle 
+            status={isOnline ? 'online' : 'offline'}
+            onClick={() => onShowDetails(device)}
+            className="mb-2"
+            showIcon={true}
+          />
+        </div>
+        
+        <div className="text-sm font-medium text-gray-900 truncate max-w-[120px]" title={deviceName}>
+          {deviceName}
+        </div>
       
       <div className={cn(
         'text-xs mt-1',
@@ -271,6 +272,7 @@ function DeviceItemComponent({ device, viewMode, onShowDetails, onDelete }: Devi
           )} />
         </div>
       )}
+      </div>
     </div>
   );
 }

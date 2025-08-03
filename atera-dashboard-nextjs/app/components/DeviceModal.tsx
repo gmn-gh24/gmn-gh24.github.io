@@ -100,7 +100,7 @@ export function DeviceModal({ device, isOpen, onClose }: DeviceModalProps) {
             )}>
               <div className={cn(
                 'w-3 h-3 rounded-full',
-                isOnline ? 'bg-green-500' : 'bg-gray-400'
+                isOnline ? 'bg-green-600' : 'bg-gray-400'
               )} />
               <span className={cn(
                 'font-medium text-sm',

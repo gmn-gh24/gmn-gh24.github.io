@@ -20,7 +20,7 @@
   --radius: 0.5rem;
   
   /* Status Colors */
-  --success: #10b981;
+  --success: #059669;
   --success-light: #d1fae5;
   --warning: #f59e0b;
   --warning-light: #fef3c7;
@@ -53,7 +53,7 @@
   --ring: #60a5fa;
   
   /* Dark mode status colors */
-  --success: #10b981;
+  --success: #059669;
   --success-light: #064e3b;
   --warning: #f59e0b;
   --warning-light: #451a03;
@@ -89,7 +89,7 @@
     --ring: #3b82f6;
     
     /* Status Colors Dark */
-    --success: #10b981;
+    --success: #059669;
     --success-light: #064e3b;
     --warning: #f59e0b;
     --warning-light: #78350f;
