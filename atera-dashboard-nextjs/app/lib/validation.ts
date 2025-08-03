@@ -6,8 +6,9 @@ export const searchQueryRegex = /^[A-Za-z0-9\s\-_.@]*$/;
 
 export function sanitizeInput(input: string): string {
   return input
-    .replace(/[<>]/g, '')
+    .replace(/[<>\/]/g, '')
     .replace(/javascript:/gi, '')
+    .replace(/script/gi, '')
     .replace(/on\w+=/gi, '')
     .trim();
 }

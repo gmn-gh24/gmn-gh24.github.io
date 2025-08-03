@@ -136,7 +136,7 @@ export function getDeviceInfo(device: AteraDevice, extended = false) {
   }
   
   const cleanLoggedUser = loggedUser?.includes('(Since:') 
-    ? loggedUser.split('(Since:')[0].trim()
+    ? loggedUser.split('(Since:')[0]?.trim()
     : loggedUser;
   
   const result = {

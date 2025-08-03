@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { secureStorage } from '../lib/secure-storage';
 
 type Theme = 'light' | 'dark' | 'system';
@@ -18,7 +18,7 @@ interface ThemeProviderProps {
   defaultTheme?: Theme;
 }
 
-export function ThemeProvider({ children, defaultTheme = 'system' }: ThemeProviderProps): JSX.Element {
+export function ThemeProvider({ children, defaultTheme = 'system' }: ThemeProviderProps): React.JSX.Element {
   const [theme, setTheme] = useState<Theme>(defaultTheme);
   const [actualTheme, setActualTheme] = useState<'light' | 'dark'>('light');
 
@@ -50,6 +50,8 @@ export function ThemeProvider({ children, defaultTheme = 'system' }: ThemeProvid
       mediaQuery.addEventListener('change', handleChange);
       return () => mediaQuery.removeEventListener('change', handleChange);
     }
+    
+    return () => {}; // Ensure all code paths return a value
   }, [theme]);
 
   useEffect(() => {

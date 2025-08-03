@@ -10,7 +10,7 @@ interface DeviceItemProps {
   device: AteraDevice;
   viewMode: 'grid' | 'list';
   onShowDetails: (device: AteraDevice) => void;
-  onDelete?: (device: AteraDevice) => void;
+  onDelete: ((device: AteraDevice) => void) | undefined;
 }
 
 function DeviceItemComponent({ device, viewMode, onShowDetails, onDelete }: DeviceItemProps) {

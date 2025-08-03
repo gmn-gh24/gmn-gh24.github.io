@@ -36,7 +36,6 @@ export function DeviceModal({ device, isOpen, onClose }: DeviceModalProps) {
   const daysOffline = getDaysOffline(device);
 
   // Build status with warning if applicable
-  const statusValue = isOnline ? 'Online' : info.lastSeen;
   const hasWarning = daysOffline !== null && daysOffline > 30;
 
   // Build modal content with specific layout structure

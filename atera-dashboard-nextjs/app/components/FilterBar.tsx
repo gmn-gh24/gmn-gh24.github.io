@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, memo } from 'react';
-import { Search, Grid, List, FolderOpen, RotateCw, RefreshCw, Filter, BarChart3, X } from 'lucide-react';
+import { Search, Grid, List, FolderOpen, RefreshCw, Filter, BarChart3, X } from 'lucide-react';
 import { DeviceFilter, ViewMode, AteraDevice } from '@/app/types/atera';
 import { cn } from '@/app/lib/utils';
 import { FolderDropdown } from './FolderDropdown';

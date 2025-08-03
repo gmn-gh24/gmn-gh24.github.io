@@ -11,7 +11,7 @@ import { DeviceGrid } from '@/app/components/DeviceGrid';
 import { FolderView } from '@/app/components/FolderView';
 import { DeviceModal } from '@/app/components/DeviceModal';
 import { ApiKeyModal } from '@/app/components/ApiKeyModal';
-import { DeviceSkeleton, PageLoader } from '@/app/components/LoadingStates';
+import { PageLoader } from '@/app/components/LoadingStates';
 import { getDeviceName, getDeviceFolder, isDeviceOnline, getDeviceId } from '@/app/lib/utils';
 
 export default function Home() {

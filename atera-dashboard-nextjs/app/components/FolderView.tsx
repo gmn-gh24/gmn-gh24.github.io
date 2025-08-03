@@ -18,7 +18,7 @@ interface FolderSectionProps {
   devices: AteraDevice[];
   viewMode: 'grid' | 'list';
   onShowDetails: (device: AteraDevice) => void;
-  onDeleteDevice?: (device: AteraDevice) => void;
+  onDeleteDevice: ((device: AteraDevice) => void) | undefined;
   isNoFolder?: boolean;
 }
 
@@ -112,7 +112,7 @@ function FolderViewComponent({ devices, viewMode, onShowDetails, onDeleteDevice 
         <FolderSection
           key={folderName}
           folderName={folderName}
-          devices={devicesByFolder[folderName]}
+          devices={devicesByFolder[folderName] || []}
           viewMode={viewMode}
           onShowDetails={onShowDetails}
           onDeleteDevice={onDeleteDevice}

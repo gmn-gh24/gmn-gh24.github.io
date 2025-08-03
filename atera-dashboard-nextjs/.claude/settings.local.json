@@ -3,7 +3,13 @@
     "allow": [
       "Bash(grep:*)",
       "Bash(npm run type-check:*)",
-      "Bash(mv:*)"
+      "Bash(mv:*)",
+      "Bash(npm run test:*)",
+      "Bash(npm run lint)",
+      "Bash(npm run build:*)",
+      "Bash(npm install:*)",
+      "Bash(timeout 30s npm run build)",
+      "Bash(npm audit:*)"
     ],
     "deny": []
   }

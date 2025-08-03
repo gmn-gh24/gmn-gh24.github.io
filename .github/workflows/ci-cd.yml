@@ -1,5 +1,9 @@
 name: CI/CD Pipeline
 
+# Note: Security headers must be configured at the hosting platform level
+# See SECURITY-HEADERS.md for implementation details
+# Headers cannot be set in next.config.ts with static export (output: 'export')
+
 on:
   push:
     branches: [ main, develop ]
@@ -63,16 +67,28 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        cache-dependency-path: 'atera-dashboard-nextjs/package-lock.json'
+    
+    - name: Install dependencies
+      working-directory: ./atera-dashboard-nextjs
+      run: npm ci
+    
     - name: Run security audit
       working-directory: ./atera-dashboard-nextjs
       run: npm audit --audit-level=high
     
     - name: Run Snyk security scan
+      if: ${{ secrets.SNYK_TOKEN != '' }}
       uses: snyk/actions/node@master
       env:
         SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
       with:
-        args: --severity-threshold=high
+        args: --severity-threshold=high --project-name=${{ github.repository }}
         command: test
 
   deploy:
@@ -98,9 +114,12 @@ jobs:
       working-directory: ./atera-dashboard-nextjs
       run: npm run build
     
-    - name: Deploy to GitHub Pages
-      uses: peaceiris/actions-gh-pages@v3
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        publish_dir: ./atera-dashboard-nextjs/out
-        cname: your-custom-domain.com  # Optional: replace with your domain
+    # Deployment step - configure based on your hosting platform
+    # Examples:
+    # - For Vercel: Use vercel/action
+    # - For Netlify: Use netlify/actions/cli@master
+    # - For AWS: Use aws-actions/configure-aws-credentials
+    # See SECURITY-HEADERS.md for platform-specific security header configuration
+    
+    - name: Build artifacts ready for deployment
+      run: echo "Build artifacts are in ./atera-dashboard-nextjs/out"
