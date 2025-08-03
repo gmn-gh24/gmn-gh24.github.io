@@ -10,6 +10,8 @@
             margin: 0;
             padding: 20px;
             background-color: #f5f5f5;
+            /* Force scrollbar to always be visible to prevent layout shift */
+            overflow-y: scroll;
         }
         
         .header {
@@ -2743,7 +2745,7 @@
          * @param {string} deviceName - Device name for error messages
          */
         async function deleteDevice(deviceId, deviceName) {
-            if (!apiKey) {
+            if (!AppState.apiKey) {
                 showError('API key not configured');
                 return;
             }
