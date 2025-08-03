@@ -1392,14 +1392,6 @@
             // Set up default UI state
             setupDefaultUIState();
             
-            // Set up API key modal enter key listener (one time setup)
-            const apiKeyInput = document.getElementById('apiKeyModalInput');
-            apiKeyInput.addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') {
-                    submitApiKey();
-                }
-            });
-            
             // Check if API key exists, if not show the API key modal
             if (AppState.apiKey) {
                 loadDevices();
@@ -1683,7 +1675,7 @@
             
             // Create devices container
             const devicesContainer = document.createElement('div');
-            devicesContainer.className = AppState.currentViewMode === 'list' ? 'folder-devices list-view' : 'folder-devices';
+            devicesContainer.className = currentViewMode === 'list' ? 'folder-devices list-view' : 'folder-devices';
             
             // Add devices to container
             folderDevices.forEach(device => {
@@ -1716,7 +1708,7 @@
             
             // Create devices container
             const devicesContainer = document.createElement('div');
-            devicesContainer.className = AppState.currentViewMode === 'list' ? 'folder-devices list-view' : 'folder-devices';
+            devicesContainer.className = currentViewMode === 'list' ? 'folder-devices list-view' : 'folder-devices';
             
             // Add devices to container
             noFolderDevices.forEach(device => {
@@ -1743,7 +1735,7 @@
             const deviceName = getDeviceName(device);
             const manageUrl = device.AppViewUrl || `https://app.atera.com/Admin#/rmm/device/${device.DeviceGuid}/agent`;
             
-            if (AppState.currentViewMode === 'list') {
+            if (currentViewMode === 'list') {
                 // List view layout
                 deviceDiv.className = 'device-item list-item';
                 deviceDiv.innerHTML = `
@@ -2133,11 +2125,11 @@
             const filteredDevices = getFilteredDevices();
             
             // Get device pool based on folder filter
-            let devicePool = AppState.devices;
-            if (AppState.currentFolderFilter !== 'all') {
-                devicePool = AppState.devices.filter(device => {
+            let devicePool = devices;
+            if (currentFolderFilter !== 'all') {
+                devicePool = devices.filter(device => {
                     const deviceFolder = getDeviceFolder(device);
-                    return deviceFolder && deviceFolder.trim() === AppState.currentFolderFilter;
+                    return deviceFolder && deviceFolder.trim() === currentFolderFilter;
                 });
             }
             
@@ -2153,14 +2145,14 @@
             ];
             
             // Add filtered count if status filter is active
-            if (AppState.currentFilter !== 'all') {
-                const filterLabel = AppState.currentFilter === 'online' ? 'Online' : 'Offline';
+            if (currentFilter !== 'all') {
+                const filterLabel = currentFilter === 'online' ? 'Online' : 'Offline';
                 summaryParts.push(`<span>Showing: ${filteredDevices.length} ${filterLabel}</span>`);
             }
             
             // Add folder filter info if active
-            if (AppState.currentFolderFilter !== 'all') {
-                summaryParts.push(`<span>Folder: ${AppState.currentFolderFilter}</span>`);
+            if (currentFolderFilter !== 'all') {
+                summaryParts.push(`<span>Folder: ${currentFolderFilter}</span>`);
             }
             
             getCachedElements().statusSummary.innerHTML = summaryParts.join(' | ');
@@ -2176,18 +2168,18 @@
             const folderViewBtn = document.getElementById('folderViewBtn');
             
             // Hide button if a specific folder is selected, show if "All Folders" is selected
-            if (AppState.currentFolderFilter !== 'all') {
+            if (currentFolderFilter !== 'all') {
                 folderViewBtn.style.display = 'none';
                 // If folder view was active, turn it off
-                if (AppState.folderViewActive) {
-                    AppState.folderViewActive = false;
+                if (folderViewActive) {
+                    folderViewActive = false;
                     folderViewBtn.classList.remove('active');
                     folderViewBtn.innerHTML = '📁 Show Folders';
                     
                     // Reset device grid classes
                     const deviceGrid = document.getElementById('deviceGrid');
                     deviceGrid.className = 'device-grid';
-                    if (AppState.currentViewMode === 'list') {
+                    if (currentViewMode === 'list') {
                         deviceGrid.classList.add('list-view');
                     }
                 }
@@ -2212,19 +2204,19 @@
             clearPollingIntervals();
             
             // Reset countdown
-            AppState.secondsUntilReload = CONFIG.COUNTDOWN_SECONDS;
+            secondsUntilReload = CONFIG.COUNTDOWN_SECONDS;
             updateCountdown();
             
             // Set up main polling interval
-            AppState.pollInterval = setInterval(loadDevices, CONFIG.POLL_INTERVAL_MS);
+            pollInterval = setInterval(loadDevices, CONFIG.POLL_INTERVAL_MS);
             
             // Set up countdown timer (1 second intervals)
-            AppState.countdownInterval = setInterval(() => {
-                AppState.secondsUntilReload--;
+            countdownInterval = setInterval(() => {
+                secondsUntilReload--;
                 updateCountdown();
                 
-                if (AppState.secondsUntilReload <= 0) {
-                    AppState.secondsUntilReload = CONFIG.COUNTDOWN_SECONDS;
+                if (secondsUntilReload <= 0) {
+                    secondsUntilReload = CONFIG.COUNTDOWN_SECONDS;
                     loadDevices();
                 }
             }, 1000);
@@ -2234,8 +2226,8 @@
          * Clear all polling intervals
          */
         function clearPollingIntervals() {
-            if (AppState.pollInterval) clearInterval(AppState.pollInterval);
-            if (AppState.countdownInterval) clearInterval(AppState.countdownInterval);
+            if (pollInterval) clearInterval(pollInterval);
+            if (countdownInterval) clearInterval(countdownInterval);
         }
         
         /**
@@ -2243,7 +2235,7 @@
          */
         function updateCountdown() {
             const { countdown } = getCachedElements();
-            countdown.textContent = `${AppState.secondsUntilReload}s`;
+            countdown.textContent = `${secondsUntilReload}s`;
         }
         
         /**
@@ -2305,7 +2297,7 @@
         document.addEventListener('visibilitychange', function() {
             if (document.hidden) {
                 clearPollingIntervals();
-            } else if (AppState.apiKey) {
+            } else if (apiKey) {
                 loadDevices();
                 startPolling();
             }
@@ -2316,11 +2308,11 @@
          * @param {string} filter - Filter type to apply
          */
         function setFilter(filter) {
-            AppState.currentFilter = filter;
+            currentFilter = filter;
             
             // If switching to online/offline only and folder view is active, disable folder view
-            if ((filter === 'online' || filter === 'offline') && AppState.folderViewActive) {
-                AppState.folderViewActive = false;
+            if ((filter === 'online' || filter === 'offline') && folderViewActive) {
+                folderViewActive = false;
                 const folderViewBtn = document.getElementById('folderViewBtn');
                 folderViewBtn.classList.remove('active');
                 folderViewBtn.innerHTML = '📁 Show Folders';
@@ -2328,7 +2320,7 @@
                 // Reset device grid classes
                 const deviceGrid = document.getElementById('deviceGrid');
                 deviceGrid.className = 'device-grid';
-                if (AppState.currentViewMode === 'list') {
+                if (currentViewMode === 'list') {
                     deviceGrid.classList.add('list-view');
                 }
             }
@@ -2347,14 +2339,14 @@
          * @param {string} query - Search query
          */
         function handleSearch(query) {
-            AppState.searchQuery = query.trim().toLowerCase();
+            searchQuery = query.trim().toLowerCase();
             
             // Debounce search to avoid excessive re-rendering
-            clearTimeout(AppState.searchTimeout);
-            AppState.searchTimeout = setTimeout(() => {
+            clearTimeout(window.searchTimeout);
+            window.searchTimeout = setTimeout(() => {
                 renderDevices();
                 updateStatusSummary();
-            }, CONFIG.SEARCH_DEBOUNCE_MS);
+            }, 300);
         }
 
         /**
@@ -2363,7 +2355,7 @@
          * @returns {boolean} True if device matches search
          */
         function deviceMatchesSearch(device) {
-            if (!AppState.searchQuery) return true;
+            if (!searchQuery) return true;
             
             const searchFields = [
                 getDeviceName(device),
@@ -2376,7 +2368,7 @@
             ];
             
             return searchFields.some(field => 
-                field && field.toString().toLowerCase().includes(AppState.searchQuery)
+                field && field.toString().toLowerCase().includes(searchQuery)
             );
         }
 
@@ -2385,26 +2377,26 @@
          * @returns {Array} Filtered and sorted device array
          */
         function getFilteredDevices() {
-            let filteredDevices = AppState.devices;
+            let filteredDevices = devices;
             
             // Apply search filter first
-            if (AppState.searchQuery) {
+            if (searchQuery) {
                 filteredDevices = filteredDevices.filter(deviceMatchesSearch);
             }
             
             // Apply status filter (online/offline/all)
-            if (AppState.currentFilter !== 'all') {
+            if (currentFilter !== 'all') {
                 filteredDevices = filteredDevices.filter(device => {
                     const isOnline = isDeviceOnline(device);
-                    return AppState.currentFilter === 'online' ? isOnline : !isOnline;
+                    return currentFilter === 'online' ? isOnline : !isOnline;
                 });
             }
             
             // Apply folder filter
-            if (AppState.currentFolderFilter !== 'all') {
+            if (currentFolderFilter !== 'all') {
                 filteredDevices = filteredDevices.filter(device => {
                     const deviceFolder = getDeviceFolder(device);
-                    return deviceFolder && deviceFolder.trim() === AppState.currentFolderFilter;
+                    return deviceFolder && deviceFolder.trim() === currentFolderFilter;
                 });
             }
             
@@ -2445,11 +2437,11 @@
          * @param {string} folderId - Folder ID to filter by or 'all'
          */
         function setFolderFilter(folderId) {
-            AppState.currentFolderFilter = folderId;
+            currentFolderFilter = folderId;
             
             // If a specific folder is selected and folder view is active, disable folder view
-            if (folderId !== 'all' && AppState.folderViewActive) {
-                AppState.folderViewActive = false;
+            if (folderId !== 'all' && folderViewActive) {
+                folderViewActive = false;
                 const folderViewBtn = document.getElementById('folderViewBtn');
                 folderViewBtn.classList.remove('active');
                 folderViewBtn.innerHTML = '📁 Show Folders';
@@ -2457,7 +2449,7 @@
                 // Reset device grid classes
                 const deviceGrid = document.getElementById('deviceGrid');
                 deviceGrid.className = 'device-grid';
-                if (AppState.currentViewMode === 'list') {
+                if (currentViewMode === 'list') {
                     deviceGrid.classList.add('list-view');
                 }
             }
@@ -2493,7 +2485,7 @@
          * @param {string} mode - View mode to set
          */
         function setViewMode(mode) {
-            AppState.currentViewMode = mode;
+            currentViewMode = mode;
             
             // Update button states
             document.querySelectorAll('.view-btn').forEach(btn => btn.classList.remove('active'));
@@ -2511,7 +2503,7 @@
             }
             
             // If folder view is active, ensure proper folder view classes are applied
-            if (AppState.folderViewActive) {
+            if (folderViewActive) {
                 deviceGrid.classList.remove('device-grid');
                 if (mode === 'list') {
                     deviceGrid.classList.add('folder-view-list');
@@ -2529,11 +2521,11 @@
          * Toggle folder view on/off
          */
         function toggleFolderView() {
-            AppState.folderViewActive = !AppState.folderViewActive;
+            folderViewActive = !folderViewActive;
             
             // Update button appearance
             const folderViewBtn = document.getElementById('folderViewBtn');
-            if (AppState.folderViewActive) {
+            if (folderViewActive) {
                 folderViewBtn.classList.add('active');
                 folderViewBtn.innerHTML = '📁 Hide Folders';
             } else {
@@ -2546,7 +2538,7 @@
             deviceGrid.className = 'device-grid';
             
             // Re-apply view mode classes if not in folder view
-            if (!AppState.folderViewActive && AppState.currentViewMode === 'list') {
+            if (!folderViewActive && currentViewMode === 'list') {
                 deviceGrid.classList.add('list-view');
             }
             
@@ -2568,11 +2560,11 @@
             // Use a small delay to ensure DOM updates are processed
             setTimeout(() => {
                 // Reset all filters to default
-                AppState.currentFilter = 'all';
-                AppState.currentFolderFilter = 'all';
-                AppState.currentViewMode = 'grid';
-                AppState.folderViewActive = false;
-                AppState.searchQuery = '';
+                currentFilter = 'all';
+                currentFolderFilter = 'all';
+                currentViewMode = 'grid';
+                folderViewActive = false;
+                searchQuery = '';
                 
                 // Clear search input
                 const searchInput = document.getElementById('searchInput');
@@ -2623,6 +2615,13 @@
             // Focus on input field
             const input = document.getElementById('apiKeyModalInput');
             setTimeout(() => input.focus(), 100);
+            
+            // Add enter key listener
+            input.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    submitApiKey();
+                }
+            });
         }
 
         /**
@@ -2679,8 +2678,8 @@
                 }
                 
                 // API key is valid, save it
-                AppState.apiKey = validation.sanitizedKey;
-                localStorage.setItem(CONFIG.STORAGE_KEY, AppState.apiKey);
+                apiKey = validation.sanitizedKey;
+                localStorage.setItem(CONFIG.STORAGE_KEY, apiKey);
                 
                 // Hide modal and start the application
                 hideApiKeyModal();
@@ -2688,6 +2687,7 @@
                 startPolling();
                 
             } catch (error) {
+                console.error('API key validation error:', error);
                 showApiModalError(error.message);
             } finally {
                 // Re-enable button
@@ -2713,7 +2713,7 @@
          */
         function confirmDeleteDevice(deviceGuid, deviceName) {
             // Create a more detailed confirmation dialog
-            const isLongOfflineDevice = AppState.devices.find(d => String(getDeviceId(d)) === String(deviceGuid) && isLongOffline(d));
+            const isLongOfflineDevice = devices.find(d => String(getDeviceId(d)) === String(deviceGuid) && isLongOffline(d));
             
             let message = `⚠️ PERMANENT ACTION WARNING ⚠️\n\n`;
             message += `You are about to delete device: "${deviceName}"\n\n`;
@@ -2763,19 +2763,31 @@
             showLoading(`Deleting device ${deviceName}...`);
             
             try {
+                console.log(`Attempting to delete device: ${deviceName} (ID: ${sanitizedDeviceId})`);
                 
                 // Find the device object for validation
-                const device = AppState.devices.find(d => String(getDeviceId(d)) === sanitizedDeviceId);
+                const device = devices.find(d => String(getDeviceId(d)) === sanitizedDeviceId);
                 
                 if (!device) {
+                    console.log('Device not found in devices array');
                     throw new Error('Device not found in current device list. Please refresh and try again.');
                 }
+                
+                console.log('Device found:', getDeviceName(device));
                 
                 // Use the device ID directly as the agent ID for the API call
                 const agentId = sanitizedDeviceId;
                 
+                console.log(`Using Agent ID: ${agentId} for deletion`);
+                
                 // Call the Atera API v3 agents delete endpoint
                 const response = await makeAteraApiRequest(`agents/${agentId}`, 'DELETE');
+                
+                console.log(`Delete response status: ${response.status} ${response.statusText}`);
+                
+                // Log response body for debugging
+                const responseText = await response.text();
+                console.log('Delete response body:', responseText);
                 
                 if (!response.ok) {
                     // Handle specific error cases
@@ -2794,6 +2806,8 @@
                     }
                 }
                 
+                console.log(`Successfully deleted device: ${deviceName}`);
+                
                 // Show success message
                 showLoading(`Device ${deviceName} deleted successfully. Refreshing...`);
                 
@@ -2802,6 +2816,7 @@
                 startPolling();
                 
             } catch (error) {
+                console.error('Error deleting device:', error);
                 showError(`Failed to delete device "${deviceName}": ${error.message}`);
                 hideLoading();
             }
