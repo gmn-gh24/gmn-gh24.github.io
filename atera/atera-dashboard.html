@@ -46,8 +46,8 @@
         
         .device-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-            gap: 20px;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 12px;
             max-width: 1200px;
             margin: 0 auto;
         }
@@ -943,18 +943,18 @@
         }
         
         .device-circle.clickable:focus {
-            outline: 2px solid #4CAF50;
+            outline: none;
         }
         
-        /* Ensure interactive elements are keyboard accessible */
+        /* Remove focus outline from interactive elements */
         .filter-btn:focus,
         .view-btn:focus,
         .manage-btn:focus,
         .delete-btn:focus,
         .reload-btn:focus,
+        .reset-btn:focus,
         .header-reload-btn:focus {
-            outline: 2px solid #4CAF50;
-            outline-offset: 2px;
+            outline: none;
         }
         
         /* Responsive design for smaller screens */
@@ -2612,6 +2612,12 @@
                 // Reload devices and restart polling with fresh data
                 loadDevices();
                 startPolling();
+                
+                // Remove focus from the reset button to clear the green border
+                const resetBtn = document.activeElement;
+                if (resetBtn && resetBtn.blur) {
+                    resetBtn.blur();
+                }
             }, 50);
         }
 
