@@ -918,6 +918,11 @@
     
     <div class="filter-controls">
         <div class="filter-buttons">
+            <div class="search-container" style="margin-right: 15px;">
+                <input type="text" id="searchInput" placeholder="Search devices..." 
+                       style="padding: 8px 12px; border: 2px solid #ddd; border-radius: 20px; font-size: 12px; width: 200px; outline: none;" 
+                       oninput="handleSearch(this.value)" />
+            </div>
             <button class="filter-btn active" onclick="setFilter('all')" id="filterAll">All Devices</button>
             <button class="filter-btn online" onclick="setFilter('online')" id="filterOnline">Online Only</button>
             <button class="filter-btn offline" onclick="setFilter('offline')" id="filterOffline">Offline Only</button>
@@ -1010,10 +1015,74 @@
             POLL_INTERVAL_MS: 20000, // 20 seconds
             COUNTDOWN_SECONDS: 20,
             STORAGE_KEY: 'ateraApiKey',
+            PREFERENCES_KEY: 'ateraUserPreferences', // User preferences storage
             MAX_RETRIES: 3, // Maximum number of retry attempts for failed API calls
             RETRY_DELAY_MS: 2000, // Delay between retry attempts
             REQUEST_TIMEOUT_MS: 30000 // Request timeout in milliseconds
         };
+
+        // ===== USER PREFERENCES =====
+        /**
+         * Save user preferences to localStorage
+         */
+        function saveUserPreferences() {
+            const preferences = {
+                viewMode: currentViewMode,
+                filter: currentFilter,
+                folderFilter: currentFolderFilter,
+                folderViewActive: folderViewActive
+            };
+            localStorage.setItem(CONFIG.PREFERENCES_KEY, JSON.stringify(preferences));
+        }
+
+        /**
+         * Load user preferences from localStorage
+         */
+        function loadUserPreferences() {
+            try {
+                const stored = localStorage.getItem(CONFIG.PREFERENCES_KEY);
+                if (stored) {
+                    const preferences = JSON.parse(stored);
+                    currentViewMode = preferences.viewMode || 'grid';
+                    currentFilter = preferences.filter || 'all';
+                    currentFolderFilter = preferences.folderFilter || 'all';
+                    folderViewActive = preferences.folderViewActive || false;
+                    
+                    // Apply loaded preferences to UI
+                    applyPreferencesToUI();
+                }
+            } catch (error) {
+                console.warn('Failed to load user preferences:', error);
+                // Continue with defaults
+            }
+        }
+
+        /**
+         * Apply loaded preferences to the UI elements
+         */
+        function applyPreferencesToUI() {
+            // Update filter buttons
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+            const filterButton = document.getElementById(`filter${currentFilter.charAt(0).toUpperCase() + currentFilter.slice(1)}`);
+            if (filterButton) filterButton.classList.add('active');
+            
+            // Update view mode buttons
+            document.querySelectorAll('.view-btn').forEach(btn => btn.classList.remove('active'));
+            const viewButton = document.getElementById(currentViewMode + 'ViewBtn');
+            if (viewButton) viewButton.classList.add('active');
+            
+            // Update folder view button
+            const folderViewBtn = document.getElementById('folderViewBtn');
+            if (folderViewBtn) {
+                if (folderViewActive) {
+                    folderViewBtn.classList.add('active');
+                    folderViewBtn.innerHTML = '📁 Hide Folders';
+                } else {
+                    folderViewBtn.classList.remove('active');
+                    folderViewBtn.innerHTML = '📁 Show Folders';
+                }
+            }
+        }
 
         // ===== GLOBAL STATE =====
         let apiKey = localStorage.getItem(CONFIG.STORAGE_KEY) || '';
@@ -1026,6 +1095,7 @@
         let currentViewMode = 'grid'; // 'grid' or 'list'
         let folderViewActive = false; // whether folder view is enabled
         let secondsUntilReload = CONFIG.COUNTDOWN_SECONDS;
+        let searchQuery = ''; // Current search query
         
         // ===== UTILITY FUNCTIONS =====
         let cachedElements;
@@ -1308,11 +1378,18 @@
         // ===== APPLICATION LIFECYCLE =====
         // Load devices when page loads
         document.addEventListener('DOMContentLoaded', function() {
-            // Ensure folder view is disabled by default
-            folderViewActive = false;
+            // Load user preferences first
+            loadUserPreferences();
+            
+            // Ensure folder view is disabled by default if not set in preferences
             const folderViewBtn = document.getElementById('folderViewBtn');
-            folderViewBtn.classList.remove('active');
-            folderViewBtn.innerHTML = '📁 Show Folders';
+            if (folderViewActive) {
+                folderViewBtn.classList.add('active');
+                folderViewBtn.innerHTML = '📁 Hide Folders';
+            } else {
+                folderViewBtn.classList.remove('active');
+                folderViewBtn.innerHTML = '📁 Show Folders';
+            }
             
             // Set initial folder view button visibility
             updateFolderViewButtonVisibility();
@@ -1332,6 +1409,7 @@
                 return;
             }
             
+            const startTime = performance.now();
             showLoading('Updating devices...');
             hideError();
             
@@ -1342,6 +1420,10 @@
                 renderDevices();
                 updateStatusSummary();
                 updateLastUpdated();
+                
+                // Log performance metrics
+                const loadTime = Math.round(performance.now() - startTime);
+                console.log(`Loaded ${devices.length} devices in ${loadTime}ms`);
                 
                 // Clear any previous errors if successful
                 hideError();
@@ -2218,17 +2300,63 @@
             document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
             document.getElementById(`filter${filter.charAt(0).toUpperCase() + filter.slice(1)}`).classList.add('active');
             
+            // Save user preferences
+            saveUserPreferences();
+            
             // Re-render devices with new filter
             renderDevices();
             updateStatusSummary();
         }
         
         /**
-         * Get filtered and sorted devices based on current filters
+         * Handle search input changes with debouncing
+         * @param {string} query - Search query
+         */
+        function handleSearch(query) {
+            searchQuery = query.trim().toLowerCase();
+            
+            // Debounce search to avoid excessive re-rendering
+            clearTimeout(window.searchTimeout);
+            window.searchTimeout = setTimeout(() => {
+                renderDevices();
+                updateStatusSummary();
+            }, 300);
+        }
+
+        /**
+         * Check if device matches search query
+         * @param {Object} device - Device object
+         * @returns {boolean} True if device matches search
+         */
+        function deviceMatchesSearch(device) {
+            if (!searchQuery) return true;
+            
+            const searchFields = [
+                getDeviceName(device),
+                getDeviceFolder(device),
+                device.OS || '',
+                device.IpAddresses?.[0] || '',
+                device.CurrentLoggedUsers || '',
+                device.LastLoginUser || '',
+                device.VendorBrandModel || ''
+            ];
+            
+            return searchFields.some(field => 
+                field && field.toString().toLowerCase().includes(searchQuery)
+            );
+        }
+
+        /**
+         * Get filtered and sorted devices based on current filters and search
          * @returns {Array} Filtered and sorted device array
          */
         function getFilteredDevices() {
             let filteredDevices = devices;
+            
+            // Apply search filter first
+            if (searchQuery) {
+                filteredDevices = filteredDevices.filter(deviceMatchesSearch);
+            }
             
             // Apply status filter (online/offline/all)
             if (currentFilter !== 'all') {
@@ -2359,6 +2487,9 @@
                 }
             }
             
+            // Save user preferences
+            saveUserPreferences();
+            
             // Re-render devices with new view mode
             renderDevices();
         }
@@ -2410,6 +2541,11 @@
                 currentFolderFilter = 'all';
                 currentViewMode = 'grid';
                 folderViewActive = false;
+                searchQuery = '';
+                
+                // Clear search input
+                const searchInput = document.getElementById('searchInput');
+                if (searchInput) searchInput.value = '';
                 
                 // Update filter button states
                 document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
@@ -2439,6 +2575,9 @@
                 
                 // Reset device grid classes
                 deviceGrid.className = 'device-grid';
+                
+                // Save reset preferences
+                saveUserPreferences();
                 
                 // Reload devices and restart polling with fresh data
                 loadDevices();
@@ -2548,20 +2687,38 @@
         }
         
         /**
-         * Show confirmation dialog for device deletion
+         * Show confirmation dialog for device deletion with enhanced warning
          * @param {string} deviceGuid - Device GUID to delete
          * @param {string} deviceName - Device name for confirmation
          */
         function confirmDeleteDevice(deviceGuid, deviceName) {
-            const message = `Are you sure you want to delete device "${deviceName}"?\n\nThis action cannot be undone and will permanently remove the device from your Atera account.`;
+            // Create a more detailed confirmation dialog
+            const isLongOfflineDevice = devices.find(d => String(getDeviceId(d)) === String(deviceGuid) && isLongOffline(d));
             
-            if (confirm(message)) {
+            let message = `⚠️ PERMANENT ACTION WARNING ⚠️\n\n`;
+            message += `You are about to delete device: "${deviceName}"\n\n`;
+            message += `This action will:\n`;
+            message += `• Permanently remove the device from your Atera account\n`;
+            message += `• Delete all associated data and history\n`;
+            message += `• Cannot be undone\n\n`;
+            
+            if (isLongOfflineDevice) {
+                message += `📝 Note: This device has been offline for more than 30 days.\n\n`;
+            }
+            
+            message += `Type "DELETE" to confirm this action:`;
+            
+            const userInput = prompt(message);
+            
+            if (userInput === 'DELETE') {
                 deleteDevice(deviceGuid, deviceName);
+            } else if (userInput !== null) {
+                alert('Deletion cancelled. You must type "DELETE" exactly to confirm.');
             }
         }
         
         /**
-         * Delete a device from Atera
+         * Delete a device from Atera with enhanced error handling
          * @param {string} deviceId - Device ID/GUID to delete
          * @param {string} deviceName - Device name for error messages
          */
@@ -2576,23 +2733,30 @@
                 return;
             }
             
+            // Validate device ID format
+            const sanitizedDeviceId = String(deviceId).trim();
+            if (!sanitizedDeviceId || sanitizedDeviceId === 'null' || sanitizedDeviceId === 'undefined') {
+                showError('Invalid device ID - cannot delete');
+                return;
+            }
+            
             showLoading(`Deleting device ${deviceName}...`);
             
             try {
-                console.log(`Attempting to delete device: ${deviceName} (ID: ${deviceId})`);
+                console.log(`Attempting to delete device: ${deviceName} (ID: ${sanitizedDeviceId})`);
                 
                 // Find the device object for validation
-                const device = devices.find(d => String(getDeviceId(d)) === String(deviceId));
+                const device = devices.find(d => String(getDeviceId(d)) === sanitizedDeviceId);
                 
                 if (!device) {
                     console.log('Device not found in devices array');
-                    throw new Error('Device not found in current device list');
+                    throw new Error('Device not found in current device list. Please refresh and try again.');
                 }
                 
                 console.log('Device found:', getDeviceName(device));
                 
                 // Use the device ID directly as the agent ID for the API call
-                const agentId = deviceId;
+                const agentId = sanitizedDeviceId;
                 
                 console.log(`Using Agent ID: ${agentId} for deletion`);
                 
@@ -2615,6 +2779,8 @@
                         throw new Error('Invalid API key');
                     } else if (response.status === 405) {
                         throw new Error('Delete operation not allowed - device may have dependencies');
+                    } else if (response.status === 409) {
+                        throw new Error('Conflict - device may be in use or have active connections');
                     } else {
                         throw new Error(`HTTP ${response.status}: ${response.statusText}${responseText ? ` - ${responseText}` : ''}`);
                     }
